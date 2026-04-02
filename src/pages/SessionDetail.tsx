@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useSession } from '../hooks/useSession.ts'
+import { useSession, usePareto } from '../hooks/useSession.ts'
 import SessionHeader from '../components/SessionHeader.tsx'
 import MetricCard from '../components/MetricCard.tsx'
+import ParetoScatter from '../components/ParetoScatter.tsx'
 
 const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
 type Tab = (typeof TABS)[number]
@@ -79,10 +80,40 @@ export default function SessionDetail() {
         </nav>
       </div>
 
-      {/* Tab Content Placeholder */}
-      <div className="py-8 text-center text-gray-400">
-        {activeTab} tab — visualizations coming soon
+      {/* Tab Content */}
+      <div className="py-6">
+        {activeTab === 'Overview' && (
+          <OverviewTab sessionId={id!} constraints={constraints} />
+        )}
+        {activeTab !== 'Overview' && (
+          <div className="py-8 text-center text-gray-400">
+            {activeTab} tab — visualizations coming soon
+          </div>
+        )}
       </div>
+    </div>
+  )
+}
+
+function OverviewTab({
+  sessionId,
+  constraints,
+}: {
+  sessionId: string
+  constraints: Record<string, number>
+}) {
+  const { data: pareto, isLoading, error } = usePareto(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading Pareto data...</p>
+  if (error) return <p className="text-red-600">Error loading Pareto data</p>
+  if (!pareto || pareto.points.length === 0) {
+    return <p className="text-gray-400">No Pareto data available for this session.</p>
+  }
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Pareto Frontier</h2>
+      <ParetoScatter data={pareto} constraints={constraints} />
     </div>
   )
 }
