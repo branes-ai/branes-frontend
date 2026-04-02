@@ -1,11 +1,16 @@
 import { useState, useMemo } from 'react'
 // @ts-expect-error — plotly.js/dist/plotly.js has no type declarations
-import Plotly from 'plotly.js/dist/plotly.js'
-import createPlotlyComponent from 'react-plotly.js/factory.js'
+import _Plotly from 'plotly.js/dist/plotly.js'
+import _createPlotlyComponent from 'react-plotly.js/factory.js'
 import type { Data, Layout } from 'plotly.js'
 import type { ParetoResponse } from '../api/types.ts'
 
-const Plot = createPlotlyComponent(Plotly)
+// Handle CJS default export interop — Vite may or may not unwrap .default
+const Plotly = (_Plotly as Record<string, unknown>)?.default ?? _Plotly
+const factory =
+  (_createPlotlyComponent as unknown as Record<string, unknown>)?.default ??
+  _createPlotlyComponent
+const Plot = (factory as typeof _createPlotlyComponent)(Plotly as object)
 
 type Projection = '3D' | 'power-latency' | 'power-cost' | 'latency-cost'
 
@@ -193,7 +198,7 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
         useResizeHandler
         style={{ width: '100%' }}
         config={{ responsive: true }}
-        onClick={(event) => {
+        onClick={(event: { points: { pointIndex: number }[] }) => {
           const idx = event.points[0]?.pointIndex
           if (idx != null) onPointClick?.(idx)
         }}
