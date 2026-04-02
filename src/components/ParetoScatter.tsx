@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react'
 import Plot from 'react-plotly.js'
-import type { Data, Layout, ScatterData } from 'plotly.js'
+import type { Data, Layout } from 'plotly.js'
 import type { ParetoResponse } from '../api/types.ts'
 
 type Projection = '3D' | 'power-latency' | 'power-cost' | 'latency-cost'
@@ -18,6 +18,18 @@ const PROJECTIONS: { value: Projection; label: string }[] = [
   { value: 'latency-cost', label: 'Latency vs Cost' },
 ]
 
+const AXIS_LABELS: Record<string, string> = {
+  power: 'Power (W)',
+  latency: 'Latency (ms)',
+  cost: 'Cost (USD)',
+}
+
+const CONSTRAINT_MAP: Record<string, string> = {
+  power: 'power_watts',
+  latency: 'latency_ms',
+  cost: 'cost_usd',
+}
+
 export default function ParetoScatter({ data, constraints, onPointClick }: Props) {
   const [projection, setProjection] = useState<Projection>('3D')
 
@@ -29,21 +41,15 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
   }, [data])
 
   const is3D = projection === '3D'
+  const axes = is3D
+    ? { x: 'power', y: 'latency', z: 'cost' }
+    : projection === 'power-latency'
+      ? { x: 'power', y: 'latency' }
+      : projection === 'power-cost'
+        ? { x: 'power', y: 'cost' }
+        : { x: 'latency', y: 'cost' }
 
-  function getAxes(proj: Projection) {
-    switch (proj) {
-      case 'power-latency':
-        return { x: 'power', y: 'latency' }
-      case 'power-cost':
-        return { x: 'power', y: 'cost' }
-      case 'latency-cost':
-        return { x: 'latency', y: 'cost' }
-      default:
-        return { x: 'power', y: 'latency', z: 'cost' }
-    }
-  }
-
-  function val(point: (typeof data.points)[0], axis: string): number {
+  function pv(point: (typeof data.points)[0], axis: string): number {
     return point[axis as keyof typeof point] as number
   }
 
@@ -56,187 +62,87 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
     ].join('<br>')
   }
 
-  const axes = getAxes(projection)
   const traces: Data[] = []
 
   // Non-dominated points
   if (nonDominated.length > 0) {
-    const trace: Data = {
+    traces.push({
       name: 'Pareto front',
       type: is3D ? 'scatter3d' : 'scatter',
       mode: 'markers',
-      x: nonDominated.map((p) => val(p, axes.x)),
-      y: nonDominated.map((p) => val(p, axes.y)),
+      x: nonDominated.map((p) => pv(p, axes.x)),
+      y: nonDominated.map((p) => pv(p, axes.y)),
+      ...(is3D && 'z' in axes ? { z: nonDominated.map((p) => pv(p, axes.z!)) } : {}),
       text: nonDominated.map(hoverText),
       hoverinfo: 'text',
       marker: {
-        size: 10,
+        size: is3D ? 8 : 10,
         color: nonDominated.map((_, i) => i),
         colorscale: 'Viridis',
+        showscale: false,
         opacity: 0.9,
       },
-    }
-    if (is3D && 'z' in axes) {
-      ;(trace as Data & { z: number[] }).z = nonDominated.map((p) => val(p, axes.z!))
-    }
-    traces.push(trace)
+    } as Data)
   }
 
   // Dominated points
   if (dominated.length > 0) {
-    const trace: Data = {
+    traces.push({
       name: 'Dominated',
       type: is3D ? 'scatter3d' : 'scatter',
       mode: 'markers',
-      x: dominated.map((p) => val(p, axes.x)),
-      y: dominated.map((p) => val(p, axes.y)),
+      x: dominated.map((p) => pv(p, axes.x)),
+      y: dominated.map((p) => pv(p, axes.y)),
+      ...(is3D && 'z' in axes ? { z: dominated.map((p) => pv(p, axes.z!)) } : {}),
       text: dominated.map(hoverText),
       hoverinfo: 'text',
-      marker: { size: 5, color: '#9ca3af', opacity: 0.4 },
-    }
-    if (is3D && 'z' in axes) {
-      ;(trace as Data & { z: number[] }).z = dominated.map((p) => val(p, axes.z!))
-    }
-    traces.push(trace)
+      marker: { size: is3D ? 4 : 5, color: '#9ca3af', opacity: 0.4 },
+    } as Data)
   }
 
   // Knee point
   if (kneePoint) {
-    const trace: Data = {
+    traces.push({
       name: 'Knee point',
       type: is3D ? 'scatter3d' : 'scatter',
-      mode: 'text+markers' as ScatterData['mode'],
-      x: [val(kneePoint, axes.x)],
-      y: [val(kneePoint, axes.y)],
-      text: ['Knee'],
-      textposition: 'top center',
-      hovertext: [hoverText(kneePoint)],
+      mode: 'markers',
+      x: [pv(kneePoint, axes.x)],
+      y: [pv(kneePoint, axes.y)],
+      ...(is3D && 'z' in axes ? { z: [pv(kneePoint, axes.z!)] } : {}),
+      text: [hoverText(kneePoint)],
       hoverinfo: 'text',
       marker: {
-        size: 16,
+        size: is3D ? 12 : 16,
         color: '#f59e0b',
-        symbol: is3D ? 'diamond' : 'diamond',
+        symbol: is3D ? 'circle' : 'diamond',
         line: { width: 2, color: '#000' },
       },
-    }
-    if (is3D && 'z' in axes) {
-      ;(trace as Data & { z: number[] }).z = [val(kneePoint, axes.z!)]
-    }
-    traces.push(trace)
+    } as Data)
   }
 
-  // Constraint boundary planes (3D) or lines (2D)
-  if (constraints) {
-    const axisKeys = is3D ? [axes.x, axes.y, (axes as { z: string }).z] : [axes.x, axes.y]
+  // Constraint budget lines (2D only — surfaces in 3D cause compatibility issues)
+  if (constraints && !is3D) {
     const allPoints = data.points
-
-    for (const axisKey of axisKeys) {
-      // Map axis name to constraint key
-      const cMap: Record<string, string> = {
-        power: 'power_watts',
-        latency: 'latency_ms',
-        cost: 'cost_usd',
-      }
-      const cKey = cMap[axisKey]
+    for (const axisKey of [axes.x, axes.y]) {
+      const cKey = CONSTRAINT_MAP[axisKey]
       const cVal = cKey ? constraints[cKey] : undefined
       if (cVal == null) continue
 
-      if (is3D) {
-        // Add a surface plane at the constraint value
-        const others = axisKeys.filter((a) => a !== axisKey)
-        const range0 = allPoints.map((p) => val(p, others[0]))
-        const range1 = allPoints.map((p) => val(p, others[1]))
-        const min0 = Math.min(...range0) * 0.8
-        const max0 = Math.max(...range0) * 1.2
-        const min1 = Math.min(...range1) * 0.8
-        const max1 = Math.max(...range1) * 1.2
+      const isX = axisKey === axes.x
+      const rangeAxis = isX ? axes.y : axes.x
+      const rangeMin = Math.min(...allPoints.map((p) => pv(p, rangeAxis))) * 0.8
+      const rangeMax = Math.max(...allPoints.map((p) => pv(p, rangeAxis))) * 1.2
 
-        const surfaceData: Record<string, unknown> = {
-          name: `${axisKey} budget`,
-          type: 'surface',
-          showscale: false,
-          opacity: 0.15,
-          colorscale: [
-            [0, '#ef4444'],
-            [1, '#ef4444'],
-          ],
-          hoverinfo: 'name',
-        }
-
-        // Build 2x2 grid for the plane
-        if (axisKey === axes.x) {
-          surfaceData.x = [
-            [cVal, cVal],
-            [cVal, cVal],
-          ]
-          surfaceData.y = [
-            [min0, max0],
-            [min0, max0],
-          ]
-          surfaceData.z = [
-            [min1, min1],
-            [max1, max1],
-          ]
-        } else if (axisKey === axes.y) {
-          surfaceData.x = [
-            [min0, max0],
-            [min0, max0],
-          ]
-          surfaceData.y = [
-            [cVal, cVal],
-            [cVal, cVal],
-          ]
-          surfaceData.z = [
-            [min1, min1],
-            [max1, max1],
-          ]
-        } else {
-          surfaceData.x = [
-            [min0, max0],
-            [min0, max0],
-          ]
-          surfaceData.y = [
-            [min1, min1],
-            [max1, max1],
-          ]
-          surfaceData.z = [
-            [cVal, cVal],
-            [cVal, cVal],
-          ]
-        }
-
-        traces.push(surfaceData as Data)
-      } else {
-        // 2D: vertical or horizontal line
-        const isX = axisKey === axes.x
-        const lineTrace: Data = {
-          name: `${axisKey} budget`,
-          type: 'scatter',
-          mode: 'lines',
-          x: isX
-            ? [cVal, cVal]
-            : [
-                Math.min(...allPoints.map((p) => val(p, axes.x))) * 0.8,
-                Math.max(...allPoints.map((p) => val(p, axes.x))) * 1.2,
-              ],
-          y: isX
-            ? [
-                Math.min(...allPoints.map((p) => val(p, axes.y))) * 0.8,
-                Math.max(...allPoints.map((p) => val(p, axes.y))) * 1.2,
-              ]
-            : [cVal, cVal],
-          line: { color: '#ef4444', width: 2, dash: 'dash' },
-          hoverinfo: 'name',
-        }
-        traces.push(lineTrace)
-      }
+      traces.push({
+        name: `${axisKey} budget (${cVal})`,
+        type: 'scatter',
+        mode: 'lines',
+        x: isX ? [cVal, cVal] : [rangeMin, rangeMax],
+        y: isX ? [rangeMin, rangeMax] : [cVal, cVal],
+        line: { color: '#ef4444', width: 2, dash: 'dash' },
+        hoverinfo: 'name',
+      } as Data)
     }
-  }
-
-  const axisLabels: Record<string, string> = {
-    power: 'Power (W)',
-    latency: 'Latency (ms)',
-    cost: 'Cost (USD)',
   }
 
   const layout: Partial<Layout> = {
@@ -248,14 +154,16 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
   }
 
   if (is3D) {
-    ;(layout as Layout & { scene: unknown }).scene = {
-      xaxis: { title: { text: axisLabels[axes.x] } },
-      yaxis: { title: { text: axisLabels[axes.y] } },
-      zaxis: { title: { text: axisLabels[(axes as { z: string }).z] } },
-    }
+    Object.assign(layout, {
+      scene: {
+        xaxis: { title: AXIS_LABELS[axes.x] },
+        yaxis: { title: AXIS_LABELS[axes.y] },
+        zaxis: { title: AXIS_LABELS[(axes as { z: string }).z] },
+      },
+    })
   } else {
-    layout.xaxis = { title: { text: axisLabels[axes.x] } }
-    layout.yaxis = { title: { text: axisLabels[axes.y] } }
+    layout.xaxis = { title: { text: AXIS_LABELS[axes.x] } }
+    layout.yaxis = { title: { text: AXIS_LABELS[axes.y] } }
   }
 
   return (
@@ -280,9 +188,10 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
         layout={layout}
         useResizeHandler
         style={{ width: '100%' }}
+        config={{ responsive: true }}
         onClick={(event) => {
-          const pointIndex = event.points[0]?.pointIndex
-          if (pointIndex != null) onPointClick?.(pointIndex)
+          const idx = event.points[0]?.pointIndex
+          if (idx != null) onPointClick?.(idx)
         }}
       />
     </div>
