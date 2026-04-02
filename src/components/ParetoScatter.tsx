@@ -1,7 +1,11 @@
 import { useState, useMemo } from 'react'
-import Plot from 'react-plotly.js'
+// @ts-expect-error — plotly.js/dist/plotly.js has no type declarations
+import Plotly from 'plotly.js/dist/plotly.js'
+import createPlotlyComponent from 'react-plotly.js/factory.js'
 import type { Data, Layout } from 'plotly.js'
 import type { ParetoResponse } from '../api/types.ts'
+
+const Plot = createPlotlyComponent(Plotly)
 
 type Projection = '3D' | 'power-latency' | 'power-cost' | 'latency-cost'
 
