@@ -48,17 +48,17 @@ npm run typecheck    # TypeScript type checking
 
 ## Tech Stack
 
-| Library | Purpose |
-|---------|---------|
-| React 18 | Component framework |
-| TypeScript | Type safety |
-| Vite | Build tool + dev server |
-| Plotly.js | Pareto frontier 3D scatter plots |
-| ECharts | Radar charts, gauges, heatmaps |
-| Cytoscape.js | Task graph DAG rendering |
-| Recharts | Line charts, timelines, bar charts |
+| Library        | Purpose                            |
+| -------------- | ---------------------------------- |
+| React 18       | Component framework                |
+| TypeScript     | Type safety                        |
+| Vite           | Build tool + dev server            |
+| Plotly.js      | Pareto frontier 3D scatter plots   |
+| ECharts        | Radar charts, gauges, heatmaps     |
+| Cytoscape.js   | Task graph DAG rendering           |
+| Recharts       | Line charts, timelines, bar charts |
 | TanStack Query | Data fetching, caching, refetching |
-| Tailwind CSS | Styling |
+| Tailwind CSS   | Styling                            |
 
 ## Project Structure
 
