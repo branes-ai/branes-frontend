@@ -230,12 +230,12 @@ TanStack Query with these defaults:
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 5_000,        // 5s before refetch
+      staleTime: 5_000, // 5s before refetch
       refetchInterval: 10_000, // 10s polling for active sessions
       retry: 2,
     },
   },
-});
+})
 ```
 
 Each visualization component uses a dedicated query hook:
@@ -243,37 +243,37 @@ Each visualization component uses a dedicated query hook:
 ```typescript
 // hooks/useSession.ts
 export function useSessionList() {
-  return useQuery({ queryKey: ['sessions'], queryFn: fetchSessions });
+  return useQuery({ queryKey: ['sessions'], queryFn: fetchSessions })
 }
 
 export function usePareto(sessionId: string) {
   return useQuery({
     queryKey: ['sessions', sessionId, 'pareto'],
     queryFn: () => fetchPareto(sessionId),
-  });
+  })
 }
 
 export function useSlackness(sessionId: string) {
   return useQuery({
     queryKey: ['sessions', sessionId, 'slackness'],
     queryFn: () => fetchSlackness(sessionId),
-  });
+  })
 }
 ```
 
 ## 5. Visualization Library Selection
 
-| Visualization | Library | Rationale |
-|--------------|---------|-----------|
-| Pareto 3D scatter | **Plotly.js** | Best interactive 3D scatter; hover, rotate, zoom; constraint boundary planes |
-| Constraint slackness | **Recharts** | Simple horizontal bars with color coding; React-native |
-| Task graph DAG | **Cytoscape.js** | Purpose-built for graph/network visualization; dagre layout |
-| Optimization trajectory | **Recharts** | Line charts with dual Y-axis; annotation markers |
-| SWaP-C radar | **ECharts** | Best radar chart implementation; overlay multiple series |
-| Cost waterfall | **Recharts** | Stacked bars with positive/negative support |
-| Drill-down tree | **ECharts** | Treemap or sunburst; good hierarchical navigation |
-| Decision timeline | **Recharts** | Horizontal timeline with custom shapes |
-| Metric cards | **Custom** | Simple React components with Tailwind |
+| Visualization           | Library          | Rationale                                                                    |
+| ----------------------- | ---------------- | ---------------------------------------------------------------------------- |
+| Pareto 3D scatter       | **Plotly.js**    | Best interactive 3D scatter; hover, rotate, zoom; constraint boundary planes |
+| Constraint slackness    | **Recharts**     | Simple horizontal bars with color coding; React-native                       |
+| Task graph DAG          | **Cytoscape.js** | Purpose-built for graph/network visualization; dagre layout                  |
+| Optimization trajectory | **Recharts**     | Line charts with dual Y-axis; annotation markers                             |
+| SWaP-C radar            | **ECharts**      | Best radar chart implementation; overlay multiple series                     |
+| Cost waterfall          | **Recharts**     | Stacked bars with positive/negative support                                  |
+| Drill-down tree         | **ECharts**      | Treemap or sunburst; good hierarchical navigation                            |
+| Decision timeline       | **Recharts**     | Horizontal timeline with custom shapes                                       |
+| Metric cards            | **Custom**       | Simple React components with Tailwind                                        |
 
 ## 6. Deployment
 
@@ -297,13 +297,13 @@ services:
   backend:
     build: ../embodied-ai-architect
     command: .venv/bin/branes api serve --host 0.0.0.0 --port 8000
-    ports: ["8000:8000"]
+    ports: ['8000:8000']
     volumes:
       - ~/.embodied-ai:/root/.embodied-ai:ro
 
   frontend:
     build: .
-    ports: ["3000:3000"]
+    ports: ['3000:3000']
     environment:
       VITE_API_URL: http://backend:8000
     depends_on: [backend]
