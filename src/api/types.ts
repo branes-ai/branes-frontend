@@ -23,6 +23,11 @@ export interface SoCDesignState {
   goal: string
   status: string
   iteration: number
+  max_iterations?: number
+  platform?: string
+  use_case?: string
+  constraints?: Record<string, number>
+  ppa_metrics?: Record<string, unknown>
   [key: string]: unknown
 }
 
