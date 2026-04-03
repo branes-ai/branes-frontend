@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import {
   useSession,
@@ -18,6 +18,9 @@ import SwapRadar from '../components/SwapRadar.tsx'
 import DrillTree from '../components/DrillTree.tsx'
 import DecisionTimeline from '../components/DecisionTimeline.tsx'
 import CostWaterfall from '../components/CostWaterfall.tsx'
+import PipelineView from '../components/PipelineView.tsx'
+import ExportButton from '../components/ExportButton.tsx'
+import { domToPng } from 'modern-screenshot'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
 const TABS = [
@@ -245,6 +248,39 @@ function ArchitectureTab({
 }: {
   session: import('../api/types.ts').SoCDesignState
 }) {
+  const archRef = useRef<HTMLDivElement>(null)
+
+  const exportPng = useCallback(async () => {
+    if (!archRef.current) return 'data:,'
+    // Temporarily expand all scrollable children to full width for capture
+    const el = archRef.current
+    const scrollables = el.querySelectorAll<HTMLElement>('.overflow-x-auto')
+    const saved: { el: HTMLElement; overflow: string; width: string }[] = []
+    scrollables.forEach((s) => {
+      saved.push({ el: s, overflow: s.style.overflow, width: s.style.width })
+      s.style.overflow = 'visible'
+      s.style.width = `${s.scrollWidth}px`
+    })
+    // Add temporary padding for export margins
+    const prevPadding = el.style.padding
+    el.style.padding = '0 2.5%'
+    const captureWidth = Math.ceil(el.scrollWidth * 1.05)
+    const dataUrl =
+      (await domToPng(el, {
+        backgroundColor: '#fff',
+        scale: 2,
+        width: captureWidth,
+        height: el.scrollHeight,
+      })) ?? 'data:,'
+    // Restore original styles
+    el.style.padding = prevPadding
+    saved.forEach(({ el: s, overflow, width }) => {
+      s.style.overflow = overflow
+      s.style.width = width
+    })
+    return dataUrl
+  }, [])
+
   const arch = session.selected_architecture as
     | { name: string; components: { name: string; type: string; description: string }[] }
     | undefined
@@ -271,7 +307,9 @@ function ArchitectureTab({
     text: 'text-gray-800',
   }
 
-  if (!arch && ipBlocks.length === 0) {
+  const pipeline = session.pipeline
+
+  if (!arch && ipBlocks.length === 0 && !pipeline) {
     return (
       <div>
         <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
@@ -282,82 +320,95 @@ function ArchitectureTab({
 
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold">
-        {arch?.name ?? 'System Architecture'}
-      </h2>
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="text-lg font-semibold">{arch?.name ?? 'System Architecture'}</h2>
+        <ExportButton onExportPng={exportPng} filename="architecture" />
+      </div>
 
-      {/* Component block diagram */}
-      {arch && (
-        <div className="mb-8">
-          <h3 className="mb-3 text-sm font-medium text-gray-500">System Components</h3>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-            {arch.components.map((comp) => {
-              const c = TYPE_COLORS[comp.type] ?? DEFAULT_COLORS
-              return (
-                <div
-                  key={comp.name}
-                  className={`rounded-lg border-2 p-3 ${c.bg} ${c.border}`}
-                >
-                  <div className={`text-sm font-semibold ${c.text}`}>{comp.name}</div>
-                  <div className="mt-0.5 text-xs capitalize text-gray-500">
-                    {comp.type}
+      <div ref={archRef}>
+        {/* Sensor → Operator → Actuator pipeline */}
+        {pipeline && (
+          <div className="mb-8">
+            <h3 className="mb-3 text-sm font-medium text-gray-500">
+              Transformational Pipeline
+            </h3>
+            <PipelineView data={pipeline} />
+          </div>
+        )}
+
+        {/* Component block diagram */}
+        {arch && (
+          <div className="mb-8">
+            <h3 className="mb-3 text-sm font-medium text-gray-500">System Components</h3>
+            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+              {arch.components.map((comp) => {
+                const c = TYPE_COLORS[comp.type] ?? DEFAULT_COLORS
+                return (
+                  <div
+                    key={comp.name}
+                    className={`rounded-lg border-2 p-3 ${c.bg} ${c.border}`}
+                  >
+                    <div className={`text-sm font-semibold ${c.text}`}>{comp.name}</div>
+                    <div className="mt-0.5 text-xs capitalize text-gray-500">
+                      {comp.type}
+                    </div>
+                    <div className="mt-1 text-xs text-gray-400">{comp.description}</div>
                   </div>
-                  <div className="mt-1 text-xs text-gray-400">{comp.description}</div>
-                </div>
-              )
-            })}
+                )
+              })}
+            </div>
+            <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
+              {Object.entries(TYPE_COLORS).map(([type, c]) => (
+                <span key={type} className="flex items-center gap-1">
+                  <span
+                    className={`inline-block h-3 w-3 rounded border ${c.bg} ${c.border}`}
+                  />
+                  <span className="capitalize">{type}</span>
+                </span>
+              ))}
+            </div>
           </div>
-          <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
-            {Object.entries(TYPE_COLORS).map(([type, c]) => (
-              <span key={type} className="flex items-center gap-1">
-                <span
-                  className={`inline-block h-3 w-3 rounded border ${c.bg} ${c.border}`}
-                />
-                <span className="capitalize">{type}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
+        )}
 
-      {/* IP Block → Operator mapping table */}
-      {ipBlocks.length > 0 && (
-        <div>
-          <h3 className="mb-3 text-sm font-medium text-gray-500">
-            IP Block — Operator Mapping
-          </h3>
-          <div className="overflow-x-auto rounded-lg border">
-            <table className="w-full text-left text-sm">
-              <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-                <tr>
-                  <th className="px-4 py-2">IP Block</th>
-                  <th className="px-4 py-2">Mapped Operators</th>
-                  <th className="px-4 py-2 text-right">Power (W)</th>
-                  <th className="px-4 py-2 text-right">Area (mm²)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {ipBlocks.map((block) => (
-                  <tr key={block.name} className="border-b hover:bg-gray-50">
-                    <td className="px-4 py-2 font-medium">{block.name}</td>
-                    <td className="px-4 py-2 text-gray-500">
-                      {block.mapped_operators.length > 0
-                        ? block.mapped_operators.join(', ')
-                        : '—'}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {block.power_watts?.toFixed(1) ?? '—'}
-                    </td>
-                    <td className="px-4 py-2 text-right">
-                      {block.area_mm2?.toFixed(0) ?? '—'}
-                    </td>
+        {/* IP Block → Operator mapping table */}
+        {ipBlocks.length > 0 && (
+          <div>
+            <h3 className="mb-3 text-sm font-medium text-gray-500">
+              IP Block — Operator Mapping
+            </h3>
+            <div className="overflow-x-auto rounded-lg border">
+              <table className="w-full text-left text-sm">
+                <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                  <tr>
+                    <th className="px-4 py-2">IP Block</th>
+                    <th className="px-4 py-2">Mapped Operators</th>
+                    <th className="px-4 py-2 text-right">Power (W)</th>
+                    <th className="px-4 py-2 text-right">Area (mm²)</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {ipBlocks.map((block) => (
+                    <tr key={block.name} className="border-b hover:bg-gray-50">
+                      <td className="px-4 py-2 font-medium">{block.name}</td>
+                      <td className="px-4 py-2 text-gray-500">
+                        {block.mapped_operators.length > 0
+                          ? block.mapped_operators.join(', ')
+                          : '—'}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {block.power_watts?.toFixed(1) ?? '—'}
+                      </td>
+                      <td className="px-4 py-2 text-right">
+                        {block.area_mm2?.toFixed(0) ?? '—'}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </div>
     </div>
   )
 }

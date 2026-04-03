@@ -29,7 +29,51 @@ export interface SoCDesignState {
   constraints?: Record<string, number>
   ppa_metrics?: Record<string, unknown>
   design_rationale?: unknown[]
+  pipeline?: PipelineData
   [key: string]: unknown
+}
+
+export interface PipelineSensor {
+  name: string
+  type: string
+  resolution?: string
+  fps?: number
+  egress_bandwidth_mbps?: number
+  output_tensor?: number[]
+}
+
+export interface PipelineStage {
+  name: string
+  type: string
+  model_class?: string
+  input_tensors?: number[][]
+  output_tensors?: number[][]
+  gflops?: number
+  mapped_to?: string
+  notes?: string
+}
+
+export interface PipelineIntermediate {
+  name: string
+  shape?: number[]
+  size_mb?: number
+  between?: string[]
+  notes?: string
+}
+
+export interface PipelineActuator {
+  name: string
+  type: string
+  channels?: number
+  ingress_bandwidth_mbps?: number
+  input_tensor?: number[]
+}
+
+export interface PipelineData {
+  sensors: PipelineSensor[]
+  stages: PipelineStage[]
+  intermediates?: PipelineIntermediate[]
+  actuators: PipelineActuator[]
 }
 
 export interface ParetoPoint {
