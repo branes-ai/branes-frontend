@@ -18,6 +18,7 @@ import SwapRadar from '../components/SwapRadar.tsx'
 import DrillTree from '../components/DrillTree.tsx'
 import DecisionTimeline from '../components/DecisionTimeline.tsx'
 import CostWaterfall from '../components/CostWaterfall.tsx'
+import PipelineView from '../components/PipelineView.tsx'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
 const TABS = [
@@ -271,7 +272,9 @@ function ArchitectureTab({
     text: 'text-gray-800',
   }
 
-  if (!arch && ipBlocks.length === 0) {
+  const pipeline = session.pipeline
+
+  if (!arch && ipBlocks.length === 0 && !pipeline) {
     return (
       <div>
         <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
@@ -285,6 +288,16 @@ function ArchitectureTab({
       <h2 className="mb-4 text-lg font-semibold">
         {arch?.name ?? 'System Architecture'}
       </h2>
+
+      {/* Sensor → Operator → Actuator pipeline */}
+      {pipeline && (
+        <div className="mb-8">
+          <h3 className="mb-3 text-sm font-medium text-gray-500">
+            Transformational Pipeline
+          </h3>
+          <PipelineView data={pipeline} />
+        </div>
+      )}
 
       {/* Component block diagram */}
       {arch && (
