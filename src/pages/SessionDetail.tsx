@@ -6,6 +6,7 @@ import {
   useSlackness,
   useTaskGraph,
   useTrajectory,
+  useWorkload,
 } from '../hooks/useSession.ts'
 import SessionHeader from '../components/SessionHeader.tsx'
 import MetricCard from '../components/MetricCard.tsx'
@@ -14,6 +15,7 @@ import SlacknessBars from '../components/SlacknessBars.tsx'
 import TaskGraph from '../components/TaskGraph.tsx'
 import TrajectoryChart from '../components/TrajectoryChart.tsx'
 import SwapRadar from '../components/SwapRadar.tsx'
+import DrillTree from '../components/DrillTree.tsx'
 
 const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
 type Tab = (typeof TABS)[number]
@@ -179,19 +181,29 @@ function OptimizationTab({
 }
 
 function ArchitectureTab({ sessionId }: { sessionId: string }) {
-  const { data: taskGraph, isLoading, error } = useTaskGraph(sessionId)
-
-  if (isLoading) return <p className="text-gray-500">Loading task graph...</p>
-  if (error) return <p className="text-red-600">Error loading task graph</p>
+  const { data: taskGraph, isLoading: tgLoading } = useTaskGraph(sessionId)
+  const { data: workload, isLoading: wlLoading } = useWorkload(sessionId)
 
   return (
-    <div>
-      <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
-      {taskGraph ? (
-        <TaskGraph data={taskGraph} />
-      ) : (
-        <p className="text-gray-400">No task graph available.</p>
-      )}
+    <div className="space-y-8">
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
+        {tgLoading && <p className="text-gray-500">Loading task graph...</p>}
+        {taskGraph && taskGraph.nodes.length > 0 ? (
+          <TaskGraph data={taskGraph} />
+        ) : (
+          !tgLoading && <p className="text-gray-400">No task graph available.</p>
+        )}
+      </div>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">Workload Breakdown</h2>
+        {wlLoading && <p className="text-gray-500">Loading workload data...</p>}
+        {workload && workload.operators.length > 0 ? (
+          <DrillTree data={workload} />
+        ) : (
+          !wlLoading && <p className="text-gray-400">No workload data available.</p>
+        )}
+      </div>
     </div>
   )
 }

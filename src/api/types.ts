@@ -79,15 +79,19 @@ export interface TaskGraphResponse {
 
 export interface WorkloadOperator {
   name: string
+  model_class: string
   gflops: number
   memory_mb: number
-  latency_ms: number
-  mapped_to: string
-  bound: string
+  latency_ms?: number
+  mapped_to?: string
+  bound?: string
+  scheduling?: string
 }
 
 export interface WorkloadResponse {
   operators: WorkloadOperator[]
   total_gflops: number
   total_memory_mb: number
+  dominant_op?: string
+  source?: string
 }
