@@ -1,9 +1,10 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useSession, usePareto } from '../hooks/useSession.ts'
+import { useSession, usePareto, useSlackness } from '../hooks/useSession.ts'
 import SessionHeader from '../components/SessionHeader.tsx'
 import MetricCard from '../components/MetricCard.tsx'
 import ParetoScatter from '../components/ParetoScatter.tsx'
+import SlacknessBars from '../components/SlacknessBars.tsx'
 
 const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
 type Tab = (typeof TABS)[number]
@@ -102,18 +103,31 @@ function OverviewTab({
   sessionId: string
   constraints: Record<string, number>
 }) {
-  const { data: pareto, isLoading, error } = usePareto(sessionId)
-
-  if (isLoading) return <p className="text-gray-500">Loading Pareto data...</p>
-  if (error) return <p className="text-red-600">Error loading Pareto data</p>
-  if (!pareto || pareto.points.length === 0) {
-    return <p className="text-gray-400">No Pareto data available for this session.</p>
-  }
+  const { data: pareto, isLoading: paretoLoading } = usePareto(sessionId)
+  const { data: slackness, isLoading: slacknessLoading } = useSlackness(sessionId)
 
   return (
-    <div>
-      <h2 className="mb-4 text-lg font-semibold">Pareto Frontier</h2>
-      <ParetoScatter data={pareto} constraints={constraints} />
+    <div className="grid gap-8 lg:grid-cols-2">
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">Pareto Frontier</h2>
+        {paretoLoading && <p className="text-gray-500">Loading Pareto data...</p>}
+        {pareto && pareto.points.length > 0 ? (
+          <ParetoScatter data={pareto} constraints={constraints} />
+        ) : (
+          !paretoLoading && <p className="text-gray-400">No Pareto data available.</p>
+        )}
+      </div>
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">Constraint Slackness</h2>
+        {slacknessLoading && <p className="text-gray-500">Loading slackness data...</p>}
+        {slackness && slackness.length > 0 ? (
+          <SlacknessBars data={slackness} />
+        ) : (
+          !slacknessLoading && (
+            <p className="text-gray-400">No slackness data available.</p>
+          )
+        )}
+      </div>
     </div>
   )
 }
