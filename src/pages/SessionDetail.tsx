@@ -20,7 +20,15 @@ import DecisionTimeline from '../components/DecisionTimeline.tsx'
 import CostWaterfall from '../components/CostWaterfall.tsx'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
-const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
+const TABS = [
+  'Overview',
+  'Workload',
+  'Architecture',
+  'Task Graph',
+  'Optimization',
+  'SWaP-C',
+  'Decisions',
+] as const
 type Tab = (typeof TABS)[number]
 
 const METRIC_DEFS = [
@@ -100,10 +108,12 @@ export default function SessionDetail() {
         {activeTab === 'Overview' && (
           <OverviewTab sessionId={id!} constraints={constraints} />
         )}
+        {activeTab === 'Workload' && <WorkloadTab sessionId={id!} />}
+        {activeTab === 'Architecture' && <ArchitectureTab session={session} />}
+        {activeTab === 'Task Graph' && <TaskGraphTab sessionId={id!} />}
         {activeTab === 'Optimization' && (
           <OptimizationTab sessionId={id!} constraints={constraints} />
         )}
-        {activeTab === 'Architecture' && <ArchitectureTab sessionId={id!} />}
         {activeTab === 'SWaP-C' && (
           <div className="space-y-8">
             <div>
@@ -212,30 +222,160 @@ function OptimizationTab({
   )
 }
 
-function ArchitectureTab({ sessionId }: { sessionId: string }) {
-  const { data: taskGraph, isLoading: tgLoading } = useTaskGraph(sessionId)
-  const { data: workload, isLoading: wlLoading } = useWorkload(sessionId)
+function WorkloadTab({ sessionId }: { sessionId: string }) {
+  const { data: workload, isLoading, error } = useWorkload(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading workload data...</p>
+  if (error) return <p className="text-red-600">Error loading workload data.</p>
 
   return (
-    <div className="space-y-8">
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Workload Breakdown</h2>
+      {workload && workload.operators.length > 0 ? (
+        <DrillTree data={workload} />
+      ) : (
+        <p className="text-gray-400">No workload data available.</p>
+      )}
+    </div>
+  )
+}
+
+function ArchitectureTab({
+  session,
+}: {
+  session: import('../api/types.ts').SoCDesignState
+}) {
+  const arch = session.selected_architecture as
+    | { name: string; components: { name: string; type: string; description: string }[] }
+    | undefined
+  const ipBlocks = (session.ip_blocks ?? []) as {
+    name: string
+    mapped_operators: string[]
+    power_watts?: number
+    area_mm2?: number
+  }[]
+
+  const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+    accelerator: { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-800' },
+    processor: { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-800' },
+    memory: { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-800' },
+    interconnect: {
+      bg: 'bg-purple-50',
+      border: 'border-purple-400',
+      text: 'text-purple-800',
+    },
+  }
+  const DEFAULT_COLORS = {
+    bg: 'bg-gray-50',
+    border: 'border-gray-400',
+    text: 'text-gray-800',
+  }
+
+  if (!arch && ipBlocks.length === 0) {
+    return (
       <div>
-        <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
-        {tgLoading && <p className="text-gray-500">Loading task graph...</p>}
-        {taskGraph && taskGraph.nodes.length > 0 ? (
-          <TaskGraph data={taskGraph} />
-        ) : (
-          !tgLoading && <p className="text-gray-400">No task graph available.</p>
-        )}
+        <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
+        <p className="text-gray-400">No architecture data available for this session.</p>
       </div>
-      <div>
-        <h2 className="mb-4 text-lg font-semibold">Workload Breakdown</h2>
-        {wlLoading && <p className="text-gray-500">Loading workload data...</p>}
-        {workload && workload.operators.length > 0 ? (
-          <DrillTree data={workload} />
-        ) : (
-          !wlLoading && <p className="text-gray-400">No workload data available.</p>
-        )}
-      </div>
+    )
+  }
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">
+        {arch?.name ?? 'System Architecture'}
+      </h2>
+
+      {/* Component block diagram */}
+      {arch && (
+        <div className="mb-8">
+          <h3 className="mb-3 text-sm font-medium text-gray-500">System Components</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {arch.components.map((comp) => {
+              const c = TYPE_COLORS[comp.type] ?? DEFAULT_COLORS
+              return (
+                <div
+                  key={comp.name}
+                  className={`rounded-lg border-2 p-3 ${c.bg} ${c.border}`}
+                >
+                  <div className={`text-sm font-semibold ${c.text}`}>{comp.name}</div>
+                  <div className="mt-0.5 text-xs capitalize text-gray-500">
+                    {comp.type}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-400">{comp.description}</div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
+            {Object.entries(TYPE_COLORS).map(([type, c]) => (
+              <span key={type} className="flex items-center gap-1">
+                <span
+                  className={`inline-block h-3 w-3 rounded border ${c.bg} ${c.border}`}
+                />
+                <span className="capitalize">{type}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* IP Block → Operator mapping table */}
+      {ipBlocks.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-medium text-gray-500">
+            IP Block — Operator Mapping
+          </h3>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2">IP Block</th>
+                  <th className="px-4 py-2">Mapped Operators</th>
+                  <th className="px-4 py-2 text-right">Power (W)</th>
+                  <th className="px-4 py-2 text-right">Area (mm²)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ipBlocks.map((block) => (
+                  <tr key={block.name} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium">{block.name}</td>
+                    <td className="px-4 py-2 text-gray-500">
+                      {block.mapped_operators.length > 0
+                        ? block.mapped_operators.join(', ')
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {block.power_watts?.toFixed(1) ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {block.area_mm2?.toFixed(0) ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function TaskGraphTab({ sessionId }: { sessionId: string }) {
+  const { data: taskGraph, isLoading, error } = useTaskGraph(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading task graph...</p>
+  if (error) return <p className="text-red-600">Error loading task graph.</p>
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
+      {taskGraph && taskGraph.nodes.length > 0 ? (
+        <TaskGraph data={taskGraph} />
+      ) : (
+        <p className="text-gray-400">No task graph available.</p>
+      )}
     </div>
   )
 }
