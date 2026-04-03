@@ -1,6 +1,7 @@
 import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import SessionList from './pages/SessionList.tsx'
 import SessionDetail from './pages/SessionDetail.tsx'
+import SessionCompare from './pages/SessionCompare.tsx'
 
 function App() {
   return (
@@ -8,6 +9,7 @@ function App() {
       <Routes>
         <Route path="/" element={<SessionList />} />
         <Route path="/sessions/:id" element={<SessionDetail />} />
+        <Route path="/compare" element={<SessionCompare />} />
       </Routes>
     </BrowserRouter>
   )
