@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import type { WorkloadResponse } from '../api/types.ts'
@@ -17,7 +17,7 @@ const METRIC_OPTIONS: { value: Metric; label: string; unit: string }[] = [
 ]
 
 export default function DrillTree({ data, onNodeClick }: Props) {
-  const chartRef = useRef<HTMLDivElement>(null)
+  const echartsRef = useRef<ReactECharts>(null)
   const [metric, setMetric] = useState<Metric>('gflops')
 
   const currentMetric = METRIC_OPTIONS.find((m) => m.value === metric)!
@@ -80,6 +80,14 @@ export default function DrillTree({ data, onNodeClick }: Props) {
     ],
   }
 
+  const exportPng = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return (
+      instance?.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' }) ??
+      'data:,'
+    )
+  }, [])
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-4">
@@ -103,46 +111,45 @@ export default function DrillTree({ data, onNodeClick }: Props) {
             Total: {total.toFixed(1)} {currentMetric.unit}
           </span>
         )}
-        <ExportButton targetRef={chartRef} filename="workload-breakdown" />
+        <ExportButton onExportPng={exportPng} filename="workload-breakdown" />
       </div>
-      <div ref={chartRef}>
-        <ReactECharts
-          option={option}
-          style={{ height: 400 }}
-          onEvents={{
-            click: (params: { name?: string }) => {
-              if (params.name) onNodeClick?.(params.name)
-            },
-          }}
-        />
+      <ReactECharts
+        ref={echartsRef}
+        option={option}
+        style={{ height: 400 }}
+        onEvents={{
+          click: (params: { name?: string }) => {
+            if (params.name) onNodeClick?.(params.name)
+          },
+        }}
+      />
 
-        {/* Operator detail table */}
-        <div className="mt-4 overflow-x-auto">
-          <table className="w-full text-left text-sm">
-            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-              <tr>
-                <th className="px-3 py-2">Operator</th>
-                <th className="px-3 py-2">Class</th>
-                <th className="px-3 py-2 text-right">GFLOPS</th>
-                <th className="px-3 py-2 text-right">Memory (MB)</th>
-                <th className="px-3 py-2">Scheduling</th>
+      {/* Operator detail table */}
+      <div className="mt-4 overflow-x-auto">
+        <table className="w-full text-left text-sm">
+          <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+            <tr>
+              <th className="px-3 py-2">Operator</th>
+              <th className="px-3 py-2">Class</th>
+              <th className="px-3 py-2 text-right">GFLOPS</th>
+              <th className="px-3 py-2 text-right">Memory (MB)</th>
+              <th className="px-3 py-2">Scheduling</th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.operators.map((op) => (
+              <tr key={op.name} className="border-b hover:bg-gray-50">
+                <td className="px-3 py-2 font-medium">{op.name}</td>
+                <td className="px-3 py-2 text-gray-500">{op.model_class}</td>
+                <td className="px-3 py-2 text-right">{op.gflops?.toFixed(1) ?? '—'}</td>
+                <td className="px-3 py-2 text-right">
+                  {op.memory_mb?.toFixed(1) ?? '—'}
+                </td>
+                <td className="px-3 py-2 text-gray-500">{op.scheduling}</td>
               </tr>
-            </thead>
-            <tbody>
-              {data.operators.map((op) => (
-                <tr key={op.name} className="border-b hover:bg-gray-50">
-                  <td className="px-3 py-2 font-medium">{op.name}</td>
-                  <td className="px-3 py-2 text-gray-500">{op.model_class}</td>
-                  <td className="px-3 py-2 text-right">{op.gflops?.toFixed(1) ?? '—'}</td>
-                  <td className="px-3 py-2 text-right">
-                    {op.memory_mb?.toFixed(1) ?? '—'}
-                  </td>
-                  <td className="px-3 py-2 text-gray-500">{op.scheduling}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   )

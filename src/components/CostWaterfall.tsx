@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import {
   BarChart,
   Bar,
@@ -11,6 +11,7 @@ import {
   Cell,
 } from 'recharts'
 import ExportButton from './ExportButton.tsx'
+import { getSvgFromContainer, svgToString, svgToPngDataUrl } from './exportUtils.ts'
 
 interface CostBreakdown {
   die_cost: number
@@ -77,10 +78,24 @@ export default function CostWaterfall({ breakdown, budgetUsd }: Props) {
     .slice(0, -1)
     .reduce((max, seg) => (seg.value > max.value ? seg : max), data[0])
 
+  const exportPng = useCallback(async () => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToPngDataUrl(svg) : 'data:,'
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToString(svg) : ''
+  }, [])
+
   return (
     <div>
       <div className="mb-2 flex justify-end">
-        <ExportButton targetRef={chartRef} filename="cost-waterfall" />
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="cost-waterfall"
+        />
       </div>
       <div ref={chartRef}>
         <ResponsiveContainer width="100%" height={350}>

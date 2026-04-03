@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
 import {
   LineChart,
   Line,
@@ -12,6 +12,7 @@ import {
 } from 'recharts'
 import type { TrajectoryEntry } from '../api/types.ts'
 import ExportButton from './ExportButton.tsx'
+import { getSvgFromContainer, svgToString, svgToPngDataUrl } from './exportUtils.ts'
 
 interface Props {
   data: TrajectoryEntry[]
@@ -79,10 +80,24 @@ export default function TrajectoryChart({ data, constraints }: Props) {
   // Iterations where strategies were applied
   const strategyIterations = data.filter((d) => d.strategy_applied != null)
 
+  const exportPng = useCallback(async () => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToPngDataUrl(svg) : 'data:,'
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToString(svg) : ''
+  }, [])
+
   return (
     <div>
       <div className="mb-2 flex justify-end">
-        <ExportButton targetRef={chartRef} filename="trajectory" />
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="trajectory"
+        />
       </div>
       <div ref={chartRef}>
         <ResponsiveContainer width="100%" height={400}>

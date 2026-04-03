@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import ExportButton from './ExportButton.tsx'
@@ -16,7 +16,7 @@ const AXES = [
 ] as const
 
 export default function SwapRadar({ metrics, constraints }: Props) {
-  const chartRef = useRef<HTMLDivElement>(null)
+  const echartsRef = useRef<ReactECharts>(null)
   const [showPercent, setShowPercent] = useState(true)
 
   const indicators = AXES.map((a) => {
@@ -87,6 +87,19 @@ export default function SwapRadar({ metrics, constraints }: Props) {
     ],
   }
 
+  const exportPng = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return (
+      instance?.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' }) ??
+      'data:,'
+    )
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return instance?.getDataURL({ type: 'svg' }) ?? ''
+  }, [])
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
@@ -112,11 +125,13 @@ export default function SwapRadar({ metrics, constraints }: Props) {
             Absolute
           </button>
         </div>
-        <ExportButton targetRef={chartRef} filename="swap-radar" />
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="swap-radar"
+        />
       </div>
-      <div ref={chartRef}>
-        <ReactECharts option={option} style={{ height: 450 }} />
-      </div>
+      <ReactECharts ref={echartsRef} option={option} style={{ height: 450 }} />
     </div>
   )
 }

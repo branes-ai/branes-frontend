@@ -1,4 +1,5 @@
-import { useRef } from 'react'
+import { useRef, useCallback } from 'react'
+import html2canvas from 'html2canvas'
 import type { SlacknessEntry } from '../api/types.ts'
 import ExportButton from './ExportButton.tsx'
 
@@ -29,10 +30,16 @@ export default function SlacknessBars({ data, onBarClick }: Props) {
   // Find max target to normalize bar widths
   const maxTarget = Math.max(...data.map((d) => d.target), 1)
 
+  const exportPng = useCallback(async () => {
+    if (!chartRef.current) return 'data:,'
+    const canvas = await html2canvas(chartRef.current, { backgroundColor: '#fff' })
+    return canvas.toDataURL('image/png')
+  }, [])
+
   return (
     <div>
       <div className="mb-2 flex justify-end">
-        <ExportButton targetRef={chartRef} filename="slackness-bars" />
+        <ExportButton onExportPng={exportPng} filename="slackness-bars" />
       </div>
       <div ref={chartRef} className="space-y-4">
         {data.map((entry) => {

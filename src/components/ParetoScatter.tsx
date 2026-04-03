@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 // @ts-expect-error — plotly.js/dist/plotly.js has no type declarations
 import _Plotly from 'plotly.js/dist/plotly.js'
 import _createPlotlyComponent from 'react-plotly.js/factory.js'
@@ -177,6 +177,29 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
     layout.yaxis = { title: { text: AXIS_LABELS[axes.y] } }
   }
 
+  const getPlotEl = useCallback(
+    () => chartRef.current?.querySelector('.js-plotly-plot') as HTMLElement | null,
+    [],
+  )
+
+  const exportPng = useCallback(async () => {
+    const el = getPlotEl()
+    if (!el) return 'data:,'
+    return (
+      Plotly as { toImage: (el: HTMLElement, opts: object) => Promise<string> }
+    ).toImage(el, { format: 'png', width: 1200, height: 600 })
+  }, [getPlotEl])
+
+  const exportSvg = useCallback(async () => {
+    const el = getPlotEl()
+    if (!el) return ''
+    const dataUrl = await (
+      Plotly as { toImage: (el: HTMLElement, opts: object) => Promise<string> }
+    ).toImage(el, { format: 'svg', width: 1200, height: 600 })
+    // Plotly returns a data URL for SVG, decode it
+    return decodeURIComponent(dataUrl.replace('data:image/svg+xml,', ''))
+  }, [getPlotEl])
+
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
@@ -195,7 +218,11 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
             </button>
           ))}
         </div>
-        <ExportButton targetRef={chartRef} filename="pareto-frontier" />
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="pareto-frontier"
+        />
       </div>
       <div ref={chartRef}>
         <Plot

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import cytoscape from 'cytoscape'
 // @ts-expect-error — cytoscape-dagre has no type declarations
 import dagre from 'cytoscape-dagre'
@@ -21,7 +21,6 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function TaskGraph({ data, onNodeClick }: Props) {
-  const exportRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
 
@@ -112,6 +111,13 @@ export default function TaskGraph({ data, onNodeClick }: Props) {
     }
   }, [data, onNodeClick])
 
+  const exportPng = useCallback(() => {
+    if (!cyRef.current) return 'data:,'
+    return cyRef.current.png({ output: 'base64uri', bg: '#ffffff', scale: 2, full: true })
+  }, [])
+
+  // SVG export requires cytoscape-svg extension — PNG only for now
+
   if (data.nodes.length === 0) {
     return <p className="text-gray-400">No task graph available.</p>
   }
@@ -130,15 +136,13 @@ export default function TaskGraph({ data, onNodeClick }: Props) {
             </span>
           ))}
         </div>
-        <ExportButton targetRef={exportRef} filename="task-graph" />
+        <ExportButton onExportPng={exportPng} filename="task-graph" />
       </div>
-      <div ref={exportRef}>
-        <div
-          ref={containerRef}
-          className="rounded-lg border bg-white"
-          style={{ height: 450 }}
-        />
-      </div>
+      <div
+        ref={containerRef}
+        className="rounded-lg border bg-white"
+        style={{ height: 450 }}
+      />
     </div>
   )
 }

@@ -1,85 +1,91 @@
-import { useCallback, type RefObject } from 'react'
-import html2canvas from 'html2canvas'
+import { useCallback } from 'react'
 
 interface Props {
-  targetRef: RefObject<HTMLDivElement | null>
+  /** Returns a data URL (image/png) for the chart */
+  onExportPng?: () => Promise<string> | string
+  /** Returns an SVG string for the chart */
+  onExportSvg?: () => Promise<string> | string
   filename?: string
 }
 
-async function exportPng(el: HTMLElement, filename: string) {
-  const canvas = await html2canvas(el, { backgroundColor: '#ffffff' })
+function downloadDataUrl(dataUrl: string, filename: string) {
   const link = document.createElement('a')
-  link.download = `${filename}.png`
-  link.href = canvas.toDataURL('image/png')
+  link.download = filename
+  link.href = dataUrl
   link.click()
 }
 
-async function exportSvg(el: HTMLElement, filename: string) {
-  // Try to find an SVG element inside the container (Recharts, Cytoscape)
-  const svg = el.querySelector('svg')
-  if (svg) {
-    const serializer = new XMLSerializer()
-    const svgStr = serializer.serializeToString(svg)
-    const blob = new Blob([svgStr], { type: 'image/svg+xml;charset=utf-8' })
-    const link = document.createElement('a')
-    link.download = `${filename}.svg`
-    link.href = URL.createObjectURL(blob)
-    link.click()
-    URL.revokeObjectURL(link.href)
-    return
-  }
-  // Fall back to PNG if no SVG found (Plotly uses canvas/WebGL)
-  await exportPng(el, filename)
+function downloadBlob(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType })
+  const link = document.createElement('a')
+  link.download = filename
+  link.href = URL.createObjectURL(blob)
+  link.click()
+  URL.revokeObjectURL(link.href)
 }
 
-async function copyToClipboard(el: HTMLElement) {
-  const canvas = await html2canvas(el, { backgroundColor: '#ffffff' })
-  canvas.toBlob(async (blob) => {
-    if (!blob) return
+async function dataUrlToBlob(dataUrl: string): Promise<Blob> {
+  const res = await fetch(dataUrl)
+  return res.blob()
+}
+
+export default function ExportButton({
+  onExportPng,
+  onExportSvg,
+  filename = 'chart',
+}: Props) {
+  const handlePng = useCallback(async () => {
+    if (!onExportPng) return
+    const dataUrl = await onExportPng()
+    downloadDataUrl(dataUrl, `${filename}.png`)
+  }, [onExportPng, filename])
+
+  const handleSvg = useCallback(async () => {
+    if (!onExportSvg) return
+    const svg = await onExportSvg()
+    downloadBlob(svg, `${filename}.svg`, 'image/svg+xml;charset=utf-8')
+  }, [onExportSvg, filename])
+
+  const handleCopy = useCallback(async () => {
+    if (!onExportPng) return
     try {
+      const dataUrl = await onExportPng()
+      const blob = await dataUrlToBlob(dataUrl)
       await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })])
     } catch {
-      // Fallback: clipboard API not available
+      // Clipboard API not available or denied
     }
-  })
-}
-
-export default function ExportButton({ targetRef, filename = 'chart' }: Props) {
-  const handlePng = useCallback(() => {
-    if (targetRef.current) exportPng(targetRef.current, filename)
-  }, [targetRef, filename])
-
-  const handleSvg = useCallback(() => {
-    if (targetRef.current) exportSvg(targetRef.current, filename)
-  }, [targetRef, filename])
-
-  const handleCopy = useCallback(() => {
-    if (targetRef.current) copyToClipboard(targetRef.current)
-  }, [targetRef])
+  }, [onExportPng])
 
   return (
     <div className="flex gap-1">
-      <button
-        onClick={handlePng}
-        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
-        title="Export as PNG"
-      >
-        PNG
-      </button>
-      <button
-        onClick={handleSvg}
-        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
-        title="Export as SVG"
-      >
-        SVG
-      </button>
-      <button
-        onClick={handleCopy}
-        className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
-        title="Copy to clipboard"
-      >
-        Copy
-      </button>
+      {onExportPng && (
+        <button
+          onClick={handlePng}
+          className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+          title="Export as PNG"
+        >
+          PNG
+        </button>
+      )}
+      {onExportSvg && (
+        <button
+          onClick={handleSvg}
+          className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+          title="Export as SVG"
+        >
+          SVG
+        </button>
+      )}
+      {onExportPng && (
+        <button
+          onClick={handleCopy}
+          className="rounded px-2 py-1 text-xs text-gray-500 hover:bg-gray-100"
+          title="Copy to clipboard"
+        >
+          Copy
+        </button>
+      )}
     </div>
   )
 }
