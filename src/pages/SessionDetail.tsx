@@ -20,7 +20,7 @@ import DecisionTimeline from '../components/DecisionTimeline.tsx'
 import CostWaterfall from '../components/CostWaterfall.tsx'
 import PipelineView from '../components/PipelineView.tsx'
 import ExportButton from '../components/ExportButton.tsx'
-import html2canvas from 'html2canvas'
+import { domToPng } from 'modern-screenshot'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
 const TABS = [
@@ -252,8 +252,9 @@ function ArchitectureTab({
 
   const exportPng = useCallback(async () => {
     if (!archRef.current) return 'data:,'
-    const canvas = await html2canvas(archRef.current, { backgroundColor: '#fff' })
-    return canvas.toDataURL('image/png')
+    return (
+      (await domToPng(archRef.current, { backgroundColor: '#fff', scale: 2 })) ?? 'data:,'
+    )
   }, [])
 
   const arch = session.selected_architecture as
