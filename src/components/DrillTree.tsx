@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import type { WorkloadResponse } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
 
 interface Props {
   data: WorkloadResponse
@@ -16,6 +17,7 @@ const METRIC_OPTIONS: { value: Metric; label: string; unit: string }[] = [
 ]
 
 export default function DrillTree({ data, onNodeClick }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null)
   const [metric, setMetric] = useState<Metric>('gflops')
 
   const currentMetric = METRIC_OPTIONS.find((m) => m.value === metric)!
@@ -101,43 +103,46 @@ export default function DrillTree({ data, onNodeClick }: Props) {
             Total: {total.toFixed(1)} {currentMetric.unit}
           </span>
         )}
+        <ExportButton targetRef={chartRef} filename="workload-breakdown" />
       </div>
-      <ReactECharts
-        option={option}
-        style={{ height: 400 }}
-        onEvents={{
-          click: (params: { name?: string }) => {
-            if (params.name) onNodeClick?.(params.name)
-          },
-        }}
-      />
+      <div ref={chartRef}>
+        <ReactECharts
+          option={option}
+          style={{ height: 400 }}
+          onEvents={{
+            click: (params: { name?: string }) => {
+              if (params.name) onNodeClick?.(params.name)
+            },
+          }}
+        />
 
-      {/* Operator detail table */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-left text-sm">
-          <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
-            <tr>
-              <th className="px-3 py-2">Operator</th>
-              <th className="px-3 py-2">Class</th>
-              <th className="px-3 py-2 text-right">GFLOPS</th>
-              <th className="px-3 py-2 text-right">Memory (MB)</th>
-              <th className="px-3 py-2">Scheduling</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.operators.map((op) => (
-              <tr key={op.name} className="border-b hover:bg-gray-50">
-                <td className="px-3 py-2 font-medium">{op.name}</td>
-                <td className="px-3 py-2 text-gray-500">{op.model_class}</td>
-                <td className="px-3 py-2 text-right">{op.gflops?.toFixed(1) ?? '—'}</td>
-                <td className="px-3 py-2 text-right">
-                  {op.memory_mb?.toFixed(1) ?? '—'}
-                </td>
-                <td className="px-3 py-2 text-gray-500">{op.scheduling}</td>
+        {/* Operator detail table */}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+              <tr>
+                <th className="px-3 py-2">Operator</th>
+                <th className="px-3 py-2">Class</th>
+                <th className="px-3 py-2 text-right">GFLOPS</th>
+                <th className="px-3 py-2 text-right">Memory (MB)</th>
+                <th className="px-3 py-2">Scheduling</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {data.operators.map((op) => (
+                <tr key={op.name} className="border-b hover:bg-gray-50">
+                  <td className="px-3 py-2 font-medium">{op.name}</td>
+                  <td className="px-3 py-2 text-gray-500">{op.model_class}</td>
+                  <td className="px-3 py-2 text-right">{op.gflops?.toFixed(1) ?? '—'}</td>
+                  <td className="px-3 py-2 text-right">
+                    {op.memory_mb?.toFixed(1) ?? '—'}
+                  </td>
+                  <td className="px-3 py-2 text-gray-500">{op.scheduling}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )

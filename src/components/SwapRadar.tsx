@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
+import ExportButton from './ExportButton.tsx'
 
 interface Props {
   metrics: Record<string, number>
@@ -15,6 +16,7 @@ const AXES = [
 ] as const
 
 export default function SwapRadar({ metrics, constraints }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null)
   const [showPercent, setShowPercent] = useState(true)
 
   const indicators = AXES.map((a) => {
@@ -87,29 +89,34 @@ export default function SwapRadar({ metrics, constraints }: Props) {
 
   return (
     <div>
-      <div className="mb-3 flex gap-2">
-        <button
-          onClick={() => setShowPercent(true)}
-          className={`rounded px-3 py-1 text-sm ${
-            showPercent
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          % of Budget
-        </button>
-        <button
-          onClick={() => setShowPercent(false)}
-          className={`rounded px-3 py-1 text-sm ${
-            !showPercent
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Absolute
-        </button>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPercent(true)}
+            className={`rounded px-3 py-1 text-sm ${
+              showPercent
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            % of Budget
+          </button>
+          <button
+            onClick={() => setShowPercent(false)}
+            className={`rounded px-3 py-1 text-sm ${
+              !showPercent
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Absolute
+          </button>
+        </div>
+        <ExportButton targetRef={chartRef} filename="swap-radar" />
       </div>
-      <ReactECharts option={option} style={{ height: 450 }} />
+      <div ref={chartRef}>
+        <ReactECharts option={option} style={{ height: 450 }} />
+      </div>
     </div>
   )
 }

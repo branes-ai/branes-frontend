@@ -3,6 +3,7 @@ import cytoscape from 'cytoscape'
 // @ts-expect-error — cytoscape-dagre has no type declarations
 import dagre from 'cytoscape-dagre'
 import type { TaskGraphResponse } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
 
 cytoscape.use(dagre)
 
@@ -20,6 +21,7 @@ const STATUS_COLORS: Record<string, string> = {
 }
 
 export default function TaskGraph({ data, onNodeClick }: Props) {
+  const exportRef = useRef<HTMLDivElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const cyRef = useRef<cytoscape.Core | null>(null)
 
@@ -116,22 +118,27 @@ export default function TaskGraph({ data, onNodeClick }: Props) {
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-3 text-xs">
-        {Object.entries(STATUS_COLORS).map(([status, color]) => (
-          <span key={status} className="flex items-center gap-1">
-            <span
-              className="inline-block h-3 w-3 rounded"
-              style={{ backgroundColor: color }}
-            />
-            <span className="capitalize">{status}</span>
-          </span>
-        ))}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex flex-wrap gap-3 text-xs">
+          {Object.entries(STATUS_COLORS).map(([status, color]) => (
+            <span key={status} className="flex items-center gap-1">
+              <span
+                className="inline-block h-3 w-3 rounded"
+                style={{ backgroundColor: color }}
+              />
+              <span className="capitalize">{status}</span>
+            </span>
+          ))}
+        </div>
+        <ExportButton targetRef={exportRef} filename="task-graph" />
       </div>
-      <div
-        ref={containerRef}
-        className="rounded-lg border bg-white"
-        style={{ height: 450 }}
-      />
+      <div ref={exportRef}>
+        <div
+          ref={containerRef}
+          className="rounded-lg border bg-white"
+          style={{ height: 450 }}
+        />
+      </div>
     </div>
   )
 }
