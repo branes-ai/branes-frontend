@@ -1,6 +1,7 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
+import ExportButton from './ExportButton.tsx'
 
 interface Props {
   metrics: Record<string, number>
@@ -15,6 +16,7 @@ const AXES = [
 ] as const
 
 export default function SwapRadar({ metrics, constraints }: Props) {
+  const echartsRef = useRef<ReactECharts>(null)
   const [showPercent, setShowPercent] = useState(true)
 
   const indicators = AXES.map((a) => {
@@ -85,31 +87,51 @@ export default function SwapRadar({ metrics, constraints }: Props) {
     ],
   }
 
+  const exportPng = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return (
+      instance?.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' }) ??
+      'data:,'
+    )
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return instance?.getDataURL({ type: 'svg' }) ?? ''
+  }, [])
+
   return (
     <div>
-      <div className="mb-3 flex gap-2">
-        <button
-          onClick={() => setShowPercent(true)}
-          className={`rounded px-3 py-1 text-sm ${
-            showPercent
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          % of Budget
-        </button>
-        <button
-          onClick={() => setShowPercent(false)}
-          className={`rounded px-3 py-1 text-sm ${
-            !showPercent
-              ? 'bg-blue-600 text-white'
-              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-          }`}
-        >
-          Absolute
-        </button>
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowPercent(true)}
+            className={`rounded px-3 py-1 text-sm ${
+              showPercent
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            % of Budget
+          </button>
+          <button
+            onClick={() => setShowPercent(false)}
+            className={`rounded px-3 py-1 text-sm ${
+              !showPercent
+                ? 'bg-blue-600 text-white'
+                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+            }`}
+          >
+            Absolute
+          </button>
+        </div>
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="swap-radar"
+        />
       </div>
-      <ReactECharts option={option} style={{ height: 450 }} />
+      <ReactECharts ref={echartsRef} option={option} style={{ height: 450 }} />
     </div>
   )
 }

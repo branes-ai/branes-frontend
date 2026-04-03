@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 // @ts-expect-error — plotly.js/dist/plotly.js has no type declarations
 import _Plotly from 'plotly.js/dist/plotly.js'
 import _createPlotlyComponent from 'react-plotly.js/factory.js'
 import type { Data, Layout } from 'plotly.js'
 import type { ParetoResponse } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
 
 // Handle CJS default export interop — Vite may or may not unwrap .default
 const Plotly = (_Plotly as Record<string, unknown>)?.default ?? _Plotly
@@ -40,6 +41,7 @@ const CONSTRAINT_MAP: Record<string, string> = {
 }
 
 export default function ParetoScatter({ data, constraints, onPointClick }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null)
   const [projection, setProjection] = useState<Projection>('3D')
 
   const { dominated, nonDominated, kneePoint } = useMemo(() => {
@@ -175,34 +177,66 @@ export default function ParetoScatter({ data, constraints, onPointClick }: Props
     layout.yaxis = { title: { text: AXIS_LABELS[axes.y] } }
   }
 
+  const getPlotEl = useCallback(
+    () => chartRef.current?.querySelector('.js-plotly-plot') as HTMLElement | null,
+    [],
+  )
+
+  const exportPng = useCallback(async () => {
+    const el = getPlotEl()
+    if (!el) return 'data:,'
+    return (
+      Plotly as { toImage: (el: HTMLElement, opts: object) => Promise<string> }
+    ).toImage(el, { format: 'png', width: 1200, height: 600 })
+  }, [getPlotEl])
+
+  const exportSvg = useCallback(async () => {
+    const el = getPlotEl()
+    if (!el) return ''
+    const dataUrl = await (
+      Plotly as { toImage: (el: HTMLElement, opts: object) => Promise<string> }
+    ).toImage(el, { format: 'svg', width: 1200, height: 600 })
+    // Plotly returns a data URL for SVG, decode it
+    return decodeURIComponent(dataUrl.replace('data:image/svg+xml,', ''))
+  }, [getPlotEl])
+
   return (
     <div>
-      <div className="mb-3 flex gap-2">
-        {PROJECTIONS.map((p) => (
-          <button
-            key={p.value}
-            onClick={() => setProjection(p.value)}
-            className={`rounded px-3 py-1 text-sm ${
-              projection === p.value
-                ? 'bg-blue-600 text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-            }`}
-          >
-            {p.label}
-          </button>
-        ))}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex gap-2">
+          {PROJECTIONS.map((p) => (
+            <button
+              key={p.value}
+              onClick={() => setProjection(p.value)}
+              className={`rounded px-3 py-1 text-sm ${
+                projection === p.value
+                  ? 'bg-blue-600 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {p.label}
+            </button>
+          ))}
+        </div>
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="pareto-frontier"
+        />
       </div>
-      <Plot
-        data={traces}
-        layout={layout}
-        useResizeHandler
-        style={{ width: '100%' }}
-        config={{ responsive: true }}
-        onClick={(event: { points: { pointIndex: number }[] }) => {
-          const idx = event.points[0]?.pointIndex
-          if (idx != null) onPointClick?.(idx)
-        }}
-      />
+      <div ref={chartRef}>
+        <Plot
+          data={traces}
+          layout={layout}
+          useResizeHandler
+          style={{ width: '100%' }}
+          config={{ responsive: true }}
+          onClick={(event: { points: { pointIndex: number }[] }) => {
+            const idx = event.points[0]?.pointIndex
+            if (idx != null) onPointClick?.(idx)
+          }}
+        />
+      </div>
     </div>
   )
 }

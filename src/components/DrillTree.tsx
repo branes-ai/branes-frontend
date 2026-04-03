@@ -1,7 +1,8 @@
-import { useState } from 'react'
+import { useState, useRef, useCallback } from 'react'
 import ReactECharts from 'echarts-for-react'
 import type { EChartsOption } from 'echarts'
 import type { WorkloadResponse } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
 
 interface Props {
   data: WorkloadResponse
@@ -16,6 +17,7 @@ const METRIC_OPTIONS: { value: Metric; label: string; unit: string }[] = [
 ]
 
 export default function DrillTree({ data, onNodeClick }: Props) {
+  const echartsRef = useRef<ReactECharts>(null)
   const [metric, setMetric] = useState<Metric>('gflops')
 
   const currentMetric = METRIC_OPTIONS.find((m) => m.value === metric)!
@@ -78,6 +80,14 @@ export default function DrillTree({ data, onNodeClick }: Props) {
     ],
   }
 
+  const exportPng = useCallback(() => {
+    const instance = echartsRef.current?.getEchartsInstance()
+    return (
+      instance?.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: '#fff' }) ??
+      'data:,'
+    )
+  }, [])
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-4">
@@ -101,8 +111,10 @@ export default function DrillTree({ data, onNodeClick }: Props) {
             Total: {total.toFixed(1)} {currentMetric.unit}
           </span>
         )}
+        <ExportButton onExportPng={exportPng} filename="workload-breakdown" />
       </div>
       <ReactECharts
+        ref={echartsRef}
         option={option}
         style={{ height: 400 }}
         onEvents={{

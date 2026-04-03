@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef, useCallback } from 'react'
 import {
   BarChart,
   Bar,
@@ -10,6 +10,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts'
+import ExportButton from './ExportButton.tsx'
+import { getSvgFromContainer, svgToString, svgToPngDataUrl } from './exportUtils.ts'
 
 interface CostBreakdown {
   die_cost: number
@@ -34,6 +36,7 @@ const SEGMENTS = [
 ] as const
 
 export default function CostWaterfall({ breakdown, budgetUsd }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null)
   const defaultVolume = breakdown.production_volume ?? 100000
   const nreTotal = breakdown.nre_total ?? breakdown.nre_per_unit * defaultVolume
   const [volume, setVolume] = useState(defaultVolume)
@@ -75,79 +78,98 @@ export default function CostWaterfall({ breakdown, budgetUsd }: Props) {
     .slice(0, -1)
     .reduce((max, seg) => (seg.value > max.value ? seg : max), data[0])
 
+  const exportPng = useCallback(async () => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToPngDataUrl(svg) : 'data:,'
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToString(svg) : ''
+  }, [])
+
   return (
     <div>
-      <ResponsiveContainer width="100%" height={350}>
-        <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
-          <XAxis dataKey="name" />
-          <YAxis
-            domain={[0, maxCost]}
-            label={{ value: 'USD', angle: -90, position: 'insideLeft' }}
-          />
-          <Tooltip
-            formatter={(value, name) => {
-              if (name === 'base') return [null, null]
-              const v = Number(value)
-              const total = data[data.length - 1].value
-              const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0'
-              return [`$${v.toFixed(2)} (${pct}%)`, 'Cost']
-            }}
-          />
-          {budgetUsd != null && (
-            <ReferenceLine
-              y={budgetUsd}
-              stroke="#ef4444"
-              strokeDasharray="6 4"
-              label={{ value: `Budget $${budgetUsd}`, fill: '#ef4444', fontSize: 12 }}
+      <div className="mb-2 flex justify-end">
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="cost-waterfall"
+        />
+      </div>
+      <div ref={chartRef}>
+        <ResponsiveContainer width="100%" height={350}>
+          <BarChart data={data} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" vertical={false} />
+            <XAxis dataKey="name" />
+            <YAxis
+              domain={[0, maxCost]}
+              label={{ value: 'USD', angle: -90, position: 'insideLeft' }}
             />
-          )}
-          {/* Invisible base bar for waterfall effect */}
-          <Bar dataKey="base" stackId="stack" fill="transparent" />
-          <Bar dataKey="value" stackId="stack" radius={[4, 4, 0, 0]}>
-            {data.map((entry) => (
-              <Cell
-                key={entry.name}
-                fill={entry.color}
-                stroke={entry.name === largestSegment.name ? '#000' : undefined}
-                strokeWidth={entry.name === largestSegment.name ? 2 : 0}
+            <Tooltip
+              formatter={(value, name) => {
+                if (name === 'base') return [null, null]
+                const v = Number(value)
+                const total = data[data.length - 1].value
+                const pct = total > 0 ? ((v / total) * 100).toFixed(1) : '0'
+                return [`$${v.toFixed(2)} (${pct}%)`, 'Cost']
+              }}
+            />
+            {budgetUsd != null && (
+              <ReferenceLine
+                y={budgetUsd}
+                stroke="#ef4444"
+                strokeDasharray="6 4"
+                label={{ value: `Budget $${budgetUsd}`, fill: '#ef4444', fontSize: 12 }}
               />
-            ))}
-          </Bar>
-        </BarChart>
-      </ResponsiveContainer>
+            )}
+            {/* Invisible base bar for waterfall effect */}
+            <Bar dataKey="base" stackId="stack" fill="transparent" />
+            <Bar dataKey="value" stackId="stack" radius={[4, 4, 0, 0]}>
+              {data.map((entry) => (
+                <Cell
+                  key={entry.name}
+                  fill={entry.color}
+                  stroke={entry.name === largestSegment.name ? '#000' : undefined}
+                  strokeWidth={entry.name === largestSegment.name ? 2 : 0}
+                />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
 
-      {/* Volume slider */}
-      <div className="mt-4 rounded-lg border bg-gray-50 p-4">
-        <div className="flex items-center justify-between text-sm">
-          <label className="font-medium text-gray-700">Production Volume</label>
-          <span className="text-gray-500">
-            {volume.toLocaleString()} units &middot; NRE/unit: $
-            {adjustedNrePerUnit.toFixed(2)}
+        {/* Volume slider */}
+        <div className="mt-4 rounded-lg border bg-gray-50 p-4">
+          <div className="flex items-center justify-between text-sm">
+            <label className="font-medium text-gray-700">Production Volume</label>
+            <span className="text-gray-500">
+              {volume.toLocaleString()} units &middot; NRE/unit: $
+              {adjustedNrePerUnit.toFixed(2)}
+            </span>
+          </div>
+          <input
+            type="range"
+            min={1000}
+            max={1000000}
+            step={1000}
+            value={volume}
+            onChange={(e) => setVolume(Number(e.target.value))}
+            className="mt-2 w-full"
+          />
+          <div className="flex justify-between text-xs text-gray-400">
+            <span>1K</span>
+            <span>500K</span>
+            <span>1M</span>
+          </div>
+        </div>
+
+        {/* Cost summary */}
+        <div className="mt-3 text-sm text-gray-500">
+          Largest cost driver:{' '}
+          <span className="font-medium" style={{ color: largestSegment.color }}>
+            {largestSegment.name} (${largestSegment.value.toFixed(2)})
           </span>
         </div>
-        <input
-          type="range"
-          min={1000}
-          max={1000000}
-          step={1000}
-          value={volume}
-          onChange={(e) => setVolume(Number(e.target.value))}
-          className="mt-2 w-full"
-        />
-        <div className="flex justify-between text-xs text-gray-400">
-          <span>1K</span>
-          <span>500K</span>
-          <span>1M</span>
-        </div>
-      </div>
-
-      {/* Cost summary */}
-      <div className="mt-3 text-sm text-gray-500">
-        Largest cost driver:{' '}
-        <span className="font-medium" style={{ color: largestSegment.color }}>
-          {largestSegment.name} (${largestSegment.value.toFixed(2)})
-        </span>
       </div>
     </div>
   )
