@@ -223,9 +223,10 @@ function OptimizationTab({
 }
 
 function WorkloadTab({ sessionId }: { sessionId: string }) {
-  const { data: workload, isLoading } = useWorkload(sessionId)
+  const { data: workload, isLoading, error } = useWorkload(sessionId)
 
   if (isLoading) return <p className="text-gray-500">Loading workload data...</p>
+  if (error) return <p className="text-red-600">Error loading workload data.</p>
 
   return (
     <div>
@@ -243,20 +244,431 @@ function ArchitectureTab() {
   return (
     <div>
       <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
-      <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
-        <p className="text-gray-500">Architecture block diagram</p>
-        <p className="mt-2 text-sm text-gray-400">
-          Application software and system component views coming soon
-        </p>
+      <div
+        className="rounded-lg border bg-white p-6"
+        role="img"
+        aria-label="Branes platform system architecture block diagram"
+      >
+        <svg
+          viewBox="0 0 800 500"
+          className="mx-auto w-full max-w-3xl"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Human Architect */}
+          <rect
+            x="300"
+            y="10"
+            width="200"
+            height="50"
+            rx="8"
+            fill="#dbeafe"
+            stroke="#3b82f6"
+            strokeWidth="2"
+          />
+          <text
+            x="400"
+            y="40"
+            textAnchor="middle"
+            fontSize="14"
+            fill="#1e40af"
+            fontWeight="600"
+          >
+            Human Architect
+          </text>
+
+          {/* Arrow down */}
+          <line
+            x1="400"
+            y1="60"
+            x2="400"
+            y2="90"
+            stroke="#9ca3af"
+            strokeWidth="2"
+            markerEnd="url(#arrow)"
+          />
+
+          {/* Frontend */}
+          <rect
+            x="250"
+            y="90"
+            width="300"
+            height="60"
+            rx="8"
+            fill="#eff6ff"
+            stroke="#3b82f6"
+            strokeWidth="2"
+          />
+          <text
+            x="400"
+            y="118"
+            textAnchor="middle"
+            fontSize="13"
+            fill="#1e40af"
+            fontWeight="600"
+          >
+            Branes Frontend (React)
+          </text>
+          <text x="400" y="136" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Port 3000 — Visualization Dashboard
+          </text>
+
+          {/* Arrow down */}
+          <line
+            x1="400"
+            y1="150"
+            x2="400"
+            y2="180"
+            stroke="#9ca3af"
+            strokeWidth="2"
+            markerEnd="url(#arrow)"
+          />
+          <text x="415" y="172" fontSize="10" fill="#9ca3af">
+            REST / SSE
+          </text>
+
+          {/* Backend */}
+          <rect
+            x="250"
+            y="180"
+            width="300"
+            height="60"
+            rx="8"
+            fill="#fef3c7"
+            stroke="#f59e0b"
+            strokeWidth="2"
+          />
+          <text
+            x="400"
+            y="208"
+            textAnchor="middle"
+            fontSize="13"
+            fill="#92400e"
+            fontWeight="600"
+          >
+            Branes API Server (FastAPI)
+          </text>
+          <text x="400" y="226" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Port 8000 — Read-only Data Access
+          </text>
+
+          {/* Arrow down */}
+          <line
+            x1="400"
+            y1="240"
+            x2="400"
+            y2="270"
+            stroke="#9ca3af"
+            strokeWidth="2"
+            markerEnd="url(#arrow)"
+          />
+          <text x="415" y="262" fontSize="10" fill="#9ca3af">
+            reads JSON
+          </text>
+
+          {/* Session Store */}
+          <rect
+            x="275"
+            y="270"
+            width="250"
+            height="50"
+            rx="8"
+            fill="#f3f4f6"
+            stroke="#6b7280"
+            strokeWidth="2"
+          />
+          <text
+            x="400"
+            y="298"
+            textAnchor="middle"
+            fontSize="13"
+            fill="#374151"
+            fontWeight="600"
+          >
+            Session Store
+          </text>
+          <text x="400" y="312" textAnchor="middle" fontSize="10" fill="#9ca3af">
+            ~/.embodied-ai/sessions/
+          </text>
+
+          {/* CLI / LangGraph on the left */}
+          <rect
+            x="30"
+            y="180"
+            width="180"
+            height="60"
+            rx="8"
+            fill="#dcfce7"
+            stroke="#22c55e"
+            strokeWidth="2"
+          />
+          <text
+            x="120"
+            y="208"
+            textAnchor="middle"
+            fontSize="13"
+            fill="#166534"
+            fontWeight="600"
+          >
+            CLI / LangGraph
+          </text>
+          <text x="120" y="226" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Design Pipeline
+          </text>
+
+          {/* Arrow from CLI to Session Store */}
+          <line x1="120" y1="240" x2="120" y2="295" stroke="#9ca3af" strokeWidth="2" />
+          <line
+            x1="120"
+            y1="295"
+            x2="275"
+            y2="295"
+            stroke="#9ca3af"
+            strokeWidth="2"
+            markerEnd="url(#arrow)"
+          />
+          <text x="180" y="288" fontSize="10" fill="#9ca3af">
+            auto-saves
+          </text>
+
+          {/* Visualization libraries on the right */}
+          <rect
+            x="600"
+            y="90"
+            width="170"
+            height="150"
+            rx="8"
+            fill="#faf5ff"
+            stroke="#8b5cf6"
+            strokeWidth="1.5"
+          />
+          <text
+            x="685"
+            y="112"
+            textAnchor="middle"
+            fontSize="12"
+            fill="#6d28d9"
+            fontWeight="600"
+          >
+            Viz Libraries
+          </text>
+          <text x="685" y="132" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Plotly.js (3D)
+          </text>
+          <text x="685" y="150" textAnchor="middle" fontSize="11" fill="#6b7280">
+            ECharts (radar)
+          </text>
+          <text x="685" y="168" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Cytoscape (DAG)
+          </text>
+          <text x="685" y="186" textAnchor="middle" fontSize="11" fill="#6b7280">
+            Recharts (lines)
+          </text>
+
+          {/* Arrow from frontend to viz */}
+          <line
+            x1="550"
+            y1="120"
+            x2="600"
+            y2="120"
+            stroke="#8b5cf6"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+            markerEnd="url(#arrow-purple)"
+          />
+
+          {/* Agent blocks at bottom */}
+          <rect
+            x="80"
+            y="370"
+            width="140"
+            height="45"
+            rx="6"
+            fill="#e0f2fe"
+            stroke="#0ea5e9"
+            strokeWidth="1.5"
+          />
+          <text
+            x="150"
+            y="395"
+            textAnchor="middle"
+            fontSize="11"
+            fill="#0369a1"
+            fontWeight="500"
+          >
+            Workload Analyzer
+          </text>
+
+          <rect
+            x="240"
+            y="370"
+            width="140"
+            height="45"
+            rx="6"
+            fill="#e0f2fe"
+            stroke="#0ea5e9"
+            strokeWidth="1.5"
+          />
+          <text
+            x="310"
+            y="395"
+            textAnchor="middle"
+            fontSize="11"
+            fill="#0369a1"
+            fontWeight="500"
+          >
+            PPA Evaluator
+          </text>
+
+          <rect
+            x="400"
+            y="370"
+            width="140"
+            height="45"
+            rx="6"
+            fill="#e0f2fe"
+            stroke="#0ea5e9"
+            strokeWidth="1.5"
+          />
+          <text
+            x="470"
+            y="395"
+            textAnchor="middle"
+            fontSize="11"
+            fill="#0369a1"
+            fontWeight="500"
+          >
+            Optimizer
+          </text>
+
+          <rect
+            x="560"
+            y="370"
+            width="140"
+            height="45"
+            rx="6"
+            fill="#e0f2fe"
+            stroke="#0ea5e9"
+            strokeWidth="1.5"
+          />
+          <text
+            x="630"
+            y="395"
+            textAnchor="middle"
+            fontSize="11"
+            fill="#0369a1"
+            fontWeight="500"
+          >
+            Report Generator
+          </text>
+
+          {/* Arrow from CLI down to agents */}
+          <line
+            x1="120"
+            y1="240"
+            x2="120"
+            y2="350"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+          <line
+            x1="120"
+            y1="350"
+            x2="630"
+            y2="350"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            strokeDasharray="4 3"
+          />
+          <line
+            x1="150"
+            y1="350"
+            x2="150"
+            y2="370"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            markerEnd="url(#arrow-green)"
+          />
+          <line
+            x1="310"
+            y1="350"
+            x2="310"
+            y2="370"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            markerEnd="url(#arrow-green)"
+          />
+          <line
+            x1="470"
+            y1="350"
+            x2="470"
+            y2="370"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            markerEnd="url(#arrow-green)"
+          />
+          <line
+            x1="630"
+            y1="350"
+            x2="630"
+            y2="370"
+            stroke="#22c55e"
+            strokeWidth="1.5"
+            markerEnd="url(#arrow-green)"
+          />
+
+          {/* Labels */}
+          <text x="400" y="460" textAnchor="middle" fontSize="12" fill="#6b7280">
+            LangGraph Specialist Agents
+          </text>
+
+          {/* Arrow markers */}
+          <defs>
+            <marker
+              id="arrow"
+              viewBox="0 0 10 10"
+              refX="10"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
+            </marker>
+            <marker
+              id="arrow-purple"
+              viewBox="0 0 10 10"
+              refX="10"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b5cf6" />
+            </marker>
+            <marker
+              id="arrow-green"
+              viewBox="0 0 10 10"
+              refX="10"
+              refY="5"
+              markerWidth="8"
+              markerHeight="8"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
+            </marker>
+          </defs>
+        </svg>
       </div>
     </div>
   )
 }
 
 function TaskGraphTab({ sessionId }: { sessionId: string }) {
-  const { data: taskGraph, isLoading } = useTaskGraph(sessionId)
+  const { data: taskGraph, isLoading, error } = useTaskGraph(sessionId)
 
   if (isLoading) return <p className="text-gray-500">Loading task graph...</p>
+  if (error) return <p className="text-red-600">Error loading task graph.</p>
 
   return (
     <div>
