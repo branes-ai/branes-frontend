@@ -1,5 +1,5 @@
 import { useRef, useCallback } from 'react'
-import html2canvas from 'html2canvas'
+import { domToPng } from 'modern-screenshot'
 import type { SlacknessEntry } from '../api/types.ts'
 import ExportButton from './ExportButton.tsx'
 
@@ -32,8 +32,10 @@ export default function SlacknessBars({ data, onBarClick }: Props) {
 
   const exportPng = useCallback(async () => {
     if (!chartRef.current) return 'data:,'
-    const canvas = await html2canvas(chartRef.current, { backgroundColor: '#fff' })
-    return canvas.toDataURL('image/png')
+    return (
+      (await domToPng(chartRef.current, { backgroundColor: '#fff', scale: 2 })) ??
+      'data:,'
+    )
   }, [])
 
   return (
