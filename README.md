@@ -51,11 +51,18 @@ npm run typecheck    # TypeScript type checking
 Start both services with a single command:
 
 ```bash
+cp .env.example .env  # adjust paths if needed
 docker compose up     # starts backend on :8000 and frontend on :3000
 ```
 
 Requires the `embodied-ai-architect` repo as a sibling directory (`../embodied-ai-architect`).
 Session data is mounted read-only from `~/.embodied-ai/sessions/`.
+Paths are configurable via `.env` — see `.env.example`.
+
+**Windows users**: For best results, use WSL2 with Docker Desktop's WSL2 backend.
+Clone both repos inside the WSL2 filesystem (not `/mnt/c/`) for native
+Linux volume performance. If running outside WSL2, set `SESSION_DIR`
+to `${USERPROFILE}/.embodied-ai` in your `.env` file.
 
 ## Tech Stack
 

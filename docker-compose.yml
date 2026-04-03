@@ -8,8 +8,8 @@ services:
     ports:
       - '8000:8000'
     volumes:
-      - ../embodied-ai-architect:/app
-      - ~/.embodied-ai:/root/.embodied-ai:ro
+      - ${BACKEND_REPO:-../embodied-ai-architect}:/app
+      - ${SESSION_DIR:-~/.embodied-ai}:/root/.embodied-ai:ro
     healthcheck:
       test:
         [
