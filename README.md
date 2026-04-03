@@ -46,6 +46,17 @@ npm run lint         # ESLint + Prettier check
 npm run typecheck    # TypeScript type checking
 ```
 
+### Docker Compose (frontend + backend)
+
+Start both services with a single command:
+
+```bash
+docker compose up     # starts backend on :8000 and frontend on :3000
+```
+
+Requires the `embodied-ai-architect` repo as a sibling directory (`../embodied-ai-architect`).
+Session data is mounted read-only from `~/.embodied-ai/sessions/`.
+
 ## Tech Stack
 
 | Library        | Purpose                            |
