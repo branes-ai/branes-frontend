@@ -1,8 +1,9 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useCallback } from 'react'
 import cytoscape from 'cytoscape'
 // @ts-expect-error — cytoscape-dagre has no type declarations
 import dagre from 'cytoscape-dagre'
 import type { TaskGraphResponse } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
 
 cytoscape.use(dagre)
 
@@ -110,22 +111,32 @@ export default function TaskGraph({ data, onNodeClick }: Props) {
     }
   }, [data, onNodeClick])
 
+  const exportPng = useCallback(() => {
+    if (!cyRef.current) return 'data:,'
+    return cyRef.current.png({ output: 'base64uri', bg: '#ffffff', scale: 2, full: true })
+  }, [])
+
+  // SVG export requires cytoscape-svg extension — PNG only for now
+
   if (data.nodes.length === 0) {
     return <p className="text-gray-400">No task graph available.</p>
   }
 
   return (
     <div>
-      <div className="mb-3 flex flex-wrap gap-3 text-xs">
-        {Object.entries(STATUS_COLORS).map(([status, color]) => (
-          <span key={status} className="flex items-center gap-1">
-            <span
-              className="inline-block h-3 w-3 rounded"
-              style={{ backgroundColor: color }}
-            />
-            <span className="capitalize">{status}</span>
-          </span>
-        ))}
+      <div className="mb-3 flex items-center justify-between">
+        <div className="flex flex-wrap gap-3 text-xs">
+          {Object.entries(STATUS_COLORS).map(([status, color]) => (
+            <span key={status} className="flex items-center gap-1">
+              <span
+                className="inline-block h-3 w-3 rounded"
+                style={{ backgroundColor: color }}
+              />
+              <span className="capitalize">{status}</span>
+            </span>
+          ))}
+        </div>
+        <ExportButton onExportPng={exportPng} filename="task-graph" />
       </div>
       <div
         ref={containerRef}

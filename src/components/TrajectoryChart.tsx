@@ -1,3 +1,4 @@
+import { useRef, useCallback } from 'react'
 import {
   LineChart,
   Line,
@@ -10,6 +11,8 @@ import {
   ResponsiveContainer,
 } from 'recharts'
 import type { TrajectoryEntry } from '../api/types.ts'
+import ExportButton from './ExportButton.tsx'
+import { getSvgFromContainer, svgToString, svgToPngDataUrl } from './exportUtils.ts'
 
 interface Props {
   data: TrajectoryEntry[]
@@ -65,6 +68,7 @@ function CustomTooltip({
 }
 
 export default function TrajectoryChart({ data, constraints }: Props) {
+  const chartRef = useRef<HTMLDivElement>(null)
   // Build chart data with flattened ppa values
   const chartData = data.map((entry) => ({
     ...entry,
@@ -76,116 +80,140 @@ export default function TrajectoryChart({ data, constraints }: Props) {
   // Iterations where strategies were applied
   const strategyIterations = data.filter((d) => d.strategy_applied != null)
 
+  const exportPng = useCallback(async () => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToPngDataUrl(svg) : 'data:,'
+  }, [])
+
+  const exportSvg = useCallback(() => {
+    const svg = getSvgFromContainer(chartRef.current)
+    return svg ? svgToString(svg) : ''
+  }, [])
+
   return (
     <div>
-      <ResponsiveContainer width="100%" height={400}>
-        <LineChart data={chartData} margin={{ top: 10, right: 10, left: 10, bottom: 10 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
-          <XAxis
-            dataKey="iteration"
-            label={{ value: 'Iteration', position: 'insideBottom', offset: -5 }}
-          />
-          <YAxis
-            yAxisId="left"
-            label={{
-              value: 'Power (W) / Latency (ms)',
-              angle: -90,
-              position: 'insideLeft',
-            }}
-          />
-          <YAxis
-            yAxisId="right"
-            orientation="right"
-            label={{ value: 'Cost (USD)', angle: 90, position: 'insideRight' }}
-          />
-          <Tooltip content={<CustomTooltip />} />
-          <Legend />
-
-          {/* Constraint budget reference lines */}
-          {METRICS.map((m) => {
-            const cKey = CONSTRAINT_MAP[m.key]
-            const cVal = cKey && constraints ? constraints[cKey] : undefined
-            if (cVal == null) return null
-            return (
-              <ReferenceLine
-                key={`budget-${m.key}`}
-                yAxisId={m.yAxisId}
-                y={cVal}
-                stroke={m.color}
-                strokeDasharray="6 4"
-                strokeOpacity={0.5}
-                label={{ value: `${m.key} budget`, fill: m.color, fontSize: 11 }}
-              />
-            )
-          })}
-
-          {/* Strategy application markers */}
-          {strategyIterations.map((s) => (
-            <ReferenceLine
-              key={`strategy-${s.iteration}`}
-              x={s.iteration}
-              stroke="#9ca3af"
-              strokeDasharray="4 4"
+      <div className="mb-2 flex justify-end">
+        <ExportButton
+          onExportPng={exportPng}
+          onExportSvg={exportSvg}
+          filename="trajectory"
+        />
+      </div>
+      <div ref={chartRef}>
+        <ResponsiveContainer width="100%" height={400}>
+          <LineChart
+            data={chartData}
+            margin={{ top: 10, right: 10, left: 10, bottom: 10 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#f0f0f0" />
+            <XAxis
+              dataKey="iteration"
+              label={{ value: 'Iteration', position: 'insideBottom', offset: -5 }}
+            />
+            <YAxis
+              yAxisId="left"
               label={{
-                value: s.strategy_applied ?? '',
-                position: 'top',
-                fill: '#6b7280',
-                fontSize: 10,
+                value: 'Power (W) / Latency (ms)',
+                angle: -90,
+                position: 'insideLeft',
               }}
             />
-          ))}
-
-          {/* Metric lines */}
-          {METRICS.map((m) => (
-            <Line
-              key={m.key}
-              yAxisId={m.yAxisId}
-              type="monotone"
-              dataKey={m.key}
-              name={m.label}
-              stroke={m.color}
-              strokeWidth={2}
-              dot={{ r: 4 }}
-              activeDot={{ r: 6 }}
+            <YAxis
+              yAxisId="right"
+              orientation="right"
+              label={{ value: 'Cost (USD)', angle: 90, position: 'insideRight' }}
             />
-          ))}
-        </LineChart>
-      </ResponsiveContainer>
+            <Tooltip content={<CustomTooltip />} />
+            <Legend />
 
-      {/* Verdict summary row */}
-      <div className="mt-4 overflow-x-auto">
-        <table className="w-full text-center text-xs">
-          <thead>
-            <tr>
-              <th className="px-2 py-1 text-left text-gray-500">Iteration</th>
-              {data.map((d) => (
-                <th key={d.iteration} className="px-2 py-1">
-                  {d.iteration}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {['power', 'latency', 'cost'].map((metric) => (
-              <tr key={metric}>
-                <td className="px-2 py-1 text-left capitalize text-gray-500">{metric}</td>
-                {data.map((d) => {
-                  const v = d.verdicts[metric]
-                  return (
-                    <td key={d.iteration} className="px-2 py-1">
-                      <span
-                        className={`inline-block h-3 w-3 rounded-full ${
-                          v === 'PASS' ? 'bg-green-500' : 'bg-red-500'
-                        }`}
-                        title={v}
-                      />
-                    </td>
-                  )
-                })}
-              </tr>
+            {/* Constraint budget reference lines */}
+            {METRICS.map((m) => {
+              const cKey = CONSTRAINT_MAP[m.key]
+              const cVal = cKey && constraints ? constraints[cKey] : undefined
+              if (cVal == null) return null
+              return (
+                <ReferenceLine
+                  key={`budget-${m.key}`}
+                  yAxisId={m.yAxisId}
+                  y={cVal}
+                  stroke={m.color}
+                  strokeDasharray="6 4"
+                  strokeOpacity={0.5}
+                  label={{ value: `${m.key} budget`, fill: m.color, fontSize: 11 }}
+                />
+              )
+            })}
+
+            {/* Strategy application markers */}
+            {strategyIterations.map((s) => (
+              <ReferenceLine
+                key={`strategy-${s.iteration}`}
+                x={s.iteration}
+                stroke="#9ca3af"
+                strokeDasharray="4 4"
+                label={{
+                  value: s.strategy_applied ?? '',
+                  position: 'top',
+                  fill: '#6b7280',
+                  fontSize: 10,
+                }}
+              />
             ))}
-          </tbody>
-        </table>
+
+            {/* Metric lines */}
+            {METRICS.map((m) => (
+              <Line
+                key={m.key}
+                yAxisId={m.yAxisId}
+                type="monotone"
+                dataKey={m.key}
+                name={m.label}
+                stroke={m.color}
+                strokeWidth={2}
+                dot={{ r: 4 }}
+                activeDot={{ r: 6 }}
+              />
+            ))}
+          </LineChart>
+        </ResponsiveContainer>
+
+        {/* Verdict summary row */}
+        <div className="mt-4 overflow-x-auto">
+          <table className="w-full text-center text-xs">
+            <thead>
+              <tr>
+                <th className="px-2 py-1 text-left text-gray-500">Iteration</th>
+                {data.map((d) => (
+                  <th key={d.iteration} className="px-2 py-1">
+                    {d.iteration}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {['power', 'latency', 'cost'].map((metric) => (
+                <tr key={metric}>
+                  <td className="px-2 py-1 text-left capitalize text-gray-500">
+                    {metric}
+                  </td>
+                  {data.map((d) => {
+                    const v = d.verdicts[metric]
+                    return (
+                      <td key={d.iteration} className="px-2 py-1">
+                        <span
+                          className={`inline-block h-3 w-3 rounded-full ${
+                            v === 'PASS' ? 'bg-green-500' : 'bg-red-500'
+                          }`}
+                          title={v}
+                        />
+                      </td>
+                    )
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
       </div>
     </div>
   )
