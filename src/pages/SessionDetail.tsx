@@ -1,11 +1,18 @@
 import { useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
-import { useSession, usePareto, useSlackness, useTaskGraph } from '../hooks/useSession.ts'
+import {
+  useSession,
+  usePareto,
+  useSlackness,
+  useTaskGraph,
+  useTrajectory,
+} from '../hooks/useSession.ts'
 import SessionHeader from '../components/SessionHeader.tsx'
 import MetricCard from '../components/MetricCard.tsx'
 import ParetoScatter from '../components/ParetoScatter.tsx'
 import SlacknessBars from '../components/SlacknessBars.tsx'
 import TaskGraph from '../components/TaskGraph.tsx'
+import TrajectoryChart from '../components/TrajectoryChart.tsx'
 
 const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
 type Tab = (typeof TABS)[number]
@@ -87,12 +94,17 @@ export default function SessionDetail() {
         {activeTab === 'Overview' && (
           <OverviewTab sessionId={id!} constraints={constraints} />
         )}
-        {activeTab === 'Architecture' && <ArchitectureTab sessionId={id!} />}
-        {activeTab !== 'Overview' && activeTab !== 'Architecture' && (
-          <div className="py-8 text-center text-gray-400">
-            {activeTab} tab — visualizations coming soon
-          </div>
+        {activeTab === 'Optimization' && (
+          <OptimizationTab sessionId={id!} constraints={constraints} />
         )}
+        {activeTab === 'Architecture' && <ArchitectureTab sessionId={id!} />}
+        {activeTab !== 'Overview' &&
+          activeTab !== 'Optimization' &&
+          activeTab !== 'Architecture' && (
+            <div className="py-8 text-center text-gray-400">
+              {activeTab} tab — visualizations coming soon
+            </div>
+          )}
       </div>
     </div>
   )
@@ -130,6 +142,30 @@ function OverviewTab({
           )
         )}
       </div>
+    </div>
+  )
+}
+
+function OptimizationTab({
+  sessionId,
+  constraints,
+}: {
+  sessionId: string
+  constraints: Record<string, number>
+}) {
+  const { data: trajectory, isLoading, error } = useTrajectory(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading trajectory...</p>
+  if (error) return <p className="text-red-600">Error loading trajectory</p>
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Optimization Trajectory</h2>
+      {trajectory && trajectory.length > 0 ? (
+        <TrajectoryChart data={trajectory} constraints={constraints} />
+      ) : (
+        <p className="text-gray-400">No optimization history available.</p>
+      )}
     </div>
   )
 }
