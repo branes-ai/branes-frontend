@@ -261,19 +261,24 @@ function ArchitectureTab({
       s.style.overflow = 'visible'
       s.style.width = `${s.scrollWidth}px`
     })
-    const result =
+    // Add temporary padding for export margins
+    const prevPadding = el.style.padding
+    el.style.padding = '0 2.5%'
+    const captureWidth = Math.ceil(el.scrollWidth * 1.05)
+    const dataUrl =
       (await domToPng(el, {
         backgroundColor: '#fff',
         scale: 2,
-        width: el.scrollWidth,
+        width: captureWidth,
         height: el.scrollHeight,
       })) ?? 'data:,'
     // Restore original styles
+    el.style.padding = prevPadding
     saved.forEach(({ el: s, overflow, width }) => {
       s.style.overflow = overflow
       s.style.width = width
     })
-    return result
+    return dataUrl
   }, [])
 
   const arch = session.selected_architecture as
