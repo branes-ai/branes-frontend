@@ -109,7 +109,7 @@ export default function SessionDetail() {
           <OverviewTab sessionId={id!} constraints={constraints} />
         )}
         {activeTab === 'Workload' && <WorkloadTab sessionId={id!} />}
-        {activeTab === 'Architecture' && <ArchitectureTab />}
+        {activeTab === 'Architecture' && <ArchitectureTab session={session} />}
         {activeTab === 'Task Graph' && <TaskGraphTab sessionId={id!} />}
         {activeTab === 'Optimization' && (
           <OptimizationTab sessionId={id!} constraints={constraints} />
@@ -240,426 +240,124 @@ function WorkloadTab({ sessionId }: { sessionId: string }) {
   )
 }
 
-function ArchitectureTab() {
+function ArchitectureTab({
+  session,
+}: {
+  session: import('../api/types.ts').SoCDesignState
+}) {
+  const arch = session.selected_architecture as
+    | { name: string; components: { name: string; type: string; description: string }[] }
+    | undefined
+  const ipBlocks = (session.ip_blocks ?? []) as {
+    name: string
+    mapped_operators: string[]
+    power_watts?: number
+    area_mm2?: number
+  }[]
+
+  const TYPE_COLORS: Record<string, { bg: string; border: string; text: string }> = {
+    accelerator: { bg: 'bg-blue-50', border: 'border-blue-400', text: 'text-blue-800' },
+    processor: { bg: 'bg-green-50', border: 'border-green-400', text: 'text-green-800' },
+    memory: { bg: 'bg-amber-50', border: 'border-amber-400', text: 'text-amber-800' },
+    interconnect: {
+      bg: 'bg-purple-50',
+      border: 'border-purple-400',
+      text: 'text-purple-800',
+    },
+  }
+  const DEFAULT_COLORS = {
+    bg: 'bg-gray-50',
+    border: 'border-gray-400',
+    text: 'text-gray-800',
+  }
+
+  if (!arch && ipBlocks.length === 0) {
+    return (
+      <div>
+        <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
+        <p className="text-gray-400">No architecture data available for this session.</p>
+      </div>
+    )
+  }
+
   return (
     <div>
-      <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
-      <div
-        className="rounded-lg border bg-white p-6"
-        role="img"
-        aria-label="Branes platform system architecture block diagram"
-      >
-        <svg
-          viewBox="0 0 800 500"
-          className="mx-auto w-full max-w-3xl"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          {/* Human Architect */}
-          <rect
-            x="300"
-            y="10"
-            width="200"
-            height="50"
-            rx="8"
-            fill="#dbeafe"
-            stroke="#3b82f6"
-            strokeWidth="2"
-          />
-          <text
-            x="400"
-            y="40"
-            textAnchor="middle"
-            fontSize="14"
-            fill="#1e40af"
-            fontWeight="600"
-          >
-            Human Architect
-          </text>
+      <h2 className="mb-4 text-lg font-semibold">
+        {arch?.name ?? 'System Architecture'}
+      </h2>
 
-          {/* Arrow down */}
-          <line
-            x1="400"
-            y1="60"
-            x2="400"
-            y2="90"
-            stroke="#9ca3af"
-            strokeWidth="2"
-            markerEnd="url(#arrow)"
-          />
+      {/* Component block diagram */}
+      {arch && (
+        <div className="mb-8">
+          <h3 className="mb-3 text-sm font-medium text-gray-500">System Components</h3>
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            {arch.components.map((comp) => {
+              const c = TYPE_COLORS[comp.type] ?? DEFAULT_COLORS
+              return (
+                <div
+                  key={comp.name}
+                  className={`rounded-lg border-2 p-3 ${c.bg} ${c.border}`}
+                >
+                  <div className={`text-sm font-semibold ${c.text}`}>{comp.name}</div>
+                  <div className="mt-0.5 text-xs capitalize text-gray-500">
+                    {comp.type}
+                  </div>
+                  <div className="mt-1 text-xs text-gray-400">{comp.description}</div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="mt-2 flex flex-wrap gap-4 text-xs text-gray-400">
+            {Object.entries(TYPE_COLORS).map(([type, c]) => (
+              <span key={type} className="flex items-center gap-1">
+                <span
+                  className={`inline-block h-3 w-3 rounded border ${c.bg} ${c.border}`}
+                />
+                <span className="capitalize">{type}</span>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
 
-          {/* Frontend */}
-          <rect
-            x="250"
-            y="90"
-            width="300"
-            height="60"
-            rx="8"
-            fill="#eff6ff"
-            stroke="#3b82f6"
-            strokeWidth="2"
-          />
-          <text
-            x="400"
-            y="118"
-            textAnchor="middle"
-            fontSize="13"
-            fill="#1e40af"
-            fontWeight="600"
-          >
-            Branes Frontend (React)
-          </text>
-          <text x="400" y="136" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Port 3000 — Visualization Dashboard
-          </text>
-
-          {/* Arrow down */}
-          <line
-            x1="400"
-            y1="150"
-            x2="400"
-            y2="180"
-            stroke="#9ca3af"
-            strokeWidth="2"
-            markerEnd="url(#arrow)"
-          />
-          <text x="415" y="172" fontSize="10" fill="#9ca3af">
-            REST / SSE
-          </text>
-
-          {/* Backend */}
-          <rect
-            x="250"
-            y="180"
-            width="300"
-            height="60"
-            rx="8"
-            fill="#fef3c7"
-            stroke="#f59e0b"
-            strokeWidth="2"
-          />
-          <text
-            x="400"
-            y="208"
-            textAnchor="middle"
-            fontSize="13"
-            fill="#92400e"
-            fontWeight="600"
-          >
-            Branes API Server (FastAPI)
-          </text>
-          <text x="400" y="226" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Port 8000 — Read-only Data Access
-          </text>
-
-          {/* Arrow down */}
-          <line
-            x1="400"
-            y1="240"
-            x2="400"
-            y2="270"
-            stroke="#9ca3af"
-            strokeWidth="2"
-            markerEnd="url(#arrow)"
-          />
-          <text x="415" y="262" fontSize="10" fill="#9ca3af">
-            reads JSON
-          </text>
-
-          {/* Session Store */}
-          <rect
-            x="275"
-            y="270"
-            width="250"
-            height="50"
-            rx="8"
-            fill="#f3f4f6"
-            stroke="#6b7280"
-            strokeWidth="2"
-          />
-          <text
-            x="400"
-            y="298"
-            textAnchor="middle"
-            fontSize="13"
-            fill="#374151"
-            fontWeight="600"
-          >
-            Session Store
-          </text>
-          <text x="400" y="312" textAnchor="middle" fontSize="10" fill="#9ca3af">
-            ~/.embodied-ai/sessions/
-          </text>
-
-          {/* CLI / LangGraph on the left */}
-          <rect
-            x="30"
-            y="180"
-            width="180"
-            height="60"
-            rx="8"
-            fill="#dcfce7"
-            stroke="#22c55e"
-            strokeWidth="2"
-          />
-          <text
-            x="120"
-            y="208"
-            textAnchor="middle"
-            fontSize="13"
-            fill="#166534"
-            fontWeight="600"
-          >
-            CLI / LangGraph
-          </text>
-          <text x="120" y="226" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Design Pipeline
-          </text>
-
-          {/* Arrow from CLI to Session Store */}
-          <line x1="120" y1="240" x2="120" y2="295" stroke="#9ca3af" strokeWidth="2" />
-          <line
-            x1="120"
-            y1="295"
-            x2="275"
-            y2="295"
-            stroke="#9ca3af"
-            strokeWidth="2"
-            markerEnd="url(#arrow)"
-          />
-          <text x="180" y="288" fontSize="10" fill="#9ca3af">
-            auto-saves
-          </text>
-
-          {/* Visualization libraries on the right */}
-          <rect
-            x="600"
-            y="90"
-            width="170"
-            height="150"
-            rx="8"
-            fill="#faf5ff"
-            stroke="#8b5cf6"
-            strokeWidth="1.5"
-          />
-          <text
-            x="685"
-            y="112"
-            textAnchor="middle"
-            fontSize="12"
-            fill="#6d28d9"
-            fontWeight="600"
-          >
-            Viz Libraries
-          </text>
-          <text x="685" y="132" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Plotly.js (3D)
-          </text>
-          <text x="685" y="150" textAnchor="middle" fontSize="11" fill="#6b7280">
-            ECharts (radar)
-          </text>
-          <text x="685" y="168" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Cytoscape (DAG)
-          </text>
-          <text x="685" y="186" textAnchor="middle" fontSize="11" fill="#6b7280">
-            Recharts (lines)
-          </text>
-
-          {/* Arrow from frontend to viz */}
-          <line
-            x1="550"
-            y1="120"
-            x2="600"
-            y2="120"
-            stroke="#8b5cf6"
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-            markerEnd="url(#arrow-purple)"
-          />
-
-          {/* Agent blocks at bottom */}
-          <rect
-            x="80"
-            y="370"
-            width="140"
-            height="45"
-            rx="6"
-            fill="#e0f2fe"
-            stroke="#0ea5e9"
-            strokeWidth="1.5"
-          />
-          <text
-            x="150"
-            y="395"
-            textAnchor="middle"
-            fontSize="11"
-            fill="#0369a1"
-            fontWeight="500"
-          >
-            Workload Analyzer
-          </text>
-
-          <rect
-            x="240"
-            y="370"
-            width="140"
-            height="45"
-            rx="6"
-            fill="#e0f2fe"
-            stroke="#0ea5e9"
-            strokeWidth="1.5"
-          />
-          <text
-            x="310"
-            y="395"
-            textAnchor="middle"
-            fontSize="11"
-            fill="#0369a1"
-            fontWeight="500"
-          >
-            PPA Evaluator
-          </text>
-
-          <rect
-            x="400"
-            y="370"
-            width="140"
-            height="45"
-            rx="6"
-            fill="#e0f2fe"
-            stroke="#0ea5e9"
-            strokeWidth="1.5"
-          />
-          <text
-            x="470"
-            y="395"
-            textAnchor="middle"
-            fontSize="11"
-            fill="#0369a1"
-            fontWeight="500"
-          >
-            Optimizer
-          </text>
-
-          <rect
-            x="560"
-            y="370"
-            width="140"
-            height="45"
-            rx="6"
-            fill="#e0f2fe"
-            stroke="#0ea5e9"
-            strokeWidth="1.5"
-          />
-          <text
-            x="630"
-            y="395"
-            textAnchor="middle"
-            fontSize="11"
-            fill="#0369a1"
-            fontWeight="500"
-          >
-            Report Generator
-          </text>
-
-          {/* Arrow from CLI down to agents */}
-          <line
-            x1="120"
-            y1="240"
-            x2="120"
-            y2="350"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-          />
-          <line
-            x1="120"
-            y1="350"
-            x2="630"
-            y2="350"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            strokeDasharray="4 3"
-          />
-          <line
-            x1="150"
-            y1="350"
-            x2="150"
-            y2="370"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow-green)"
-          />
-          <line
-            x1="310"
-            y1="350"
-            x2="310"
-            y2="370"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow-green)"
-          />
-          <line
-            x1="470"
-            y1="350"
-            x2="470"
-            y2="370"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow-green)"
-          />
-          <line
-            x1="630"
-            y1="350"
-            x2="630"
-            y2="370"
-            stroke="#22c55e"
-            strokeWidth="1.5"
-            markerEnd="url(#arrow-green)"
-          />
-
-          {/* Labels */}
-          <text x="400" y="460" textAnchor="middle" fontSize="12" fill="#6b7280">
-            LangGraph Specialist Agents
-          </text>
-
-          {/* Arrow markers */}
-          <defs>
-            <marker
-              id="arrow"
-              viewBox="0 0 10 10"
-              refX="10"
-              refY="5"
-              markerWidth="8"
-              markerHeight="8"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#9ca3af" />
-            </marker>
-            <marker
-              id="arrow-purple"
-              viewBox="0 0 10 10"
-              refX="10"
-              refY="5"
-              markerWidth="8"
-              markerHeight="8"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#8b5cf6" />
-            </marker>
-            <marker
-              id="arrow-green"
-              viewBox="0 0 10 10"
-              refX="10"
-              refY="5"
-              markerWidth="8"
-              markerHeight="8"
-              orient="auto-start-reverse"
-            >
-              <path d="M 0 0 L 10 5 L 0 10 z" fill="#22c55e" />
-            </marker>
-          </defs>
-        </svg>
-      </div>
+      {/* IP Block → Operator mapping table */}
+      {ipBlocks.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-sm font-medium text-gray-500">
+            IP Block — Operator Mapping
+          </h3>
+          <div className="overflow-x-auto rounded-lg border">
+            <table className="w-full text-left text-sm">
+              <thead className="border-b bg-gray-50 text-xs uppercase text-gray-500">
+                <tr>
+                  <th className="px-4 py-2">IP Block</th>
+                  <th className="px-4 py-2">Mapped Operators</th>
+                  <th className="px-4 py-2 text-right">Power (W)</th>
+                  <th className="px-4 py-2 text-right">Area (mm²)</th>
+                </tr>
+              </thead>
+              <tbody>
+                {ipBlocks.map((block) => (
+                  <tr key={block.name} className="border-b hover:bg-gray-50">
+                    <td className="px-4 py-2 font-medium">{block.name}</td>
+                    <td className="px-4 py-2 text-gray-500">
+                      {block.mapped_operators.length > 0
+                        ? block.mapped_operators.join(', ')
+                        : '—'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {block.power_watts?.toFixed(1) ?? '—'}
+                    </td>
+                    <td className="px-4 py-2 text-right">
+                      {block.area_mm2?.toFixed(0) ?? '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
