@@ -252,9 +252,28 @@ function ArchitectureTab({
 
   const exportPng = useCallback(async () => {
     if (!archRef.current) return 'data:,'
-    return (
-      (await domToPng(archRef.current, { backgroundColor: '#fff', scale: 2 })) ?? 'data:,'
-    )
+    // Temporarily expand all scrollable children to full width for capture
+    const el = archRef.current
+    const scrollables = el.querySelectorAll<HTMLElement>('.overflow-x-auto')
+    const saved: { el: HTMLElement; overflow: string; width: string }[] = []
+    scrollables.forEach((s) => {
+      saved.push({ el: s, overflow: s.style.overflow, width: s.style.width })
+      s.style.overflow = 'visible'
+      s.style.width = `${s.scrollWidth}px`
+    })
+    const result =
+      (await domToPng(el, {
+        backgroundColor: '#fff',
+        scale: 2,
+        width: el.scrollWidth,
+        height: el.scrollHeight,
+      })) ?? 'data:,'
+    // Restore original styles
+    saved.forEach(({ el: s, overflow, width }) => {
+      s.style.overflow = overflow
+      s.style.width = width
+    })
+    return result
   }, [])
 
   const arch = session.selected_architecture as
