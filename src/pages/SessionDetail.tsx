@@ -20,7 +20,15 @@ import DecisionTimeline from '../components/DecisionTimeline.tsx'
 import CostWaterfall from '../components/CostWaterfall.tsx'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
-const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
+const TABS = [
+  'Overview',
+  'Workload',
+  'Architecture',
+  'Task Graph',
+  'Optimization',
+  'SWaP-C',
+  'Decisions',
+] as const
 type Tab = (typeof TABS)[number]
 
 const METRIC_DEFS = [
@@ -100,10 +108,12 @@ export default function SessionDetail() {
         {activeTab === 'Overview' && (
           <OverviewTab sessionId={id!} constraints={constraints} />
         )}
+        {activeTab === 'Workload' && <WorkloadTab sessionId={id!} />}
+        {activeTab === 'Architecture' && <ArchitectureTab />}
+        {activeTab === 'Task Graph' && <TaskGraphTab sessionId={id!} />}
         {activeTab === 'Optimization' && (
           <OptimizationTab sessionId={id!} constraints={constraints} />
         )}
-        {activeTab === 'Architecture' && <ArchitectureTab sessionId={id!} />}
         {activeTab === 'SWaP-C' && (
           <div className="space-y-8">
             <div>
@@ -212,30 +222,50 @@ function OptimizationTab({
   )
 }
 
-function ArchitectureTab({ sessionId }: { sessionId: string }) {
-  const { data: taskGraph, isLoading: tgLoading } = useTaskGraph(sessionId)
-  const { data: workload, isLoading: wlLoading } = useWorkload(sessionId)
+function WorkloadTab({ sessionId }: { sessionId: string }) {
+  const { data: workload, isLoading } = useWorkload(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading workload data...</p>
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
-        {tgLoading && <p className="text-gray-500">Loading task graph...</p>}
-        {taskGraph && taskGraph.nodes.length > 0 ? (
-          <TaskGraph data={taskGraph} />
-        ) : (
-          !tgLoading && <p className="text-gray-400">No task graph available.</p>
-        )}
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Workload Breakdown</h2>
+      {workload && workload.operators.length > 0 ? (
+        <DrillTree data={workload} />
+      ) : (
+        <p className="text-gray-400">No workload data available.</p>
+      )}
+    </div>
+  )
+}
+
+function ArchitectureTab() {
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">System Architecture</h2>
+      <div className="rounded-lg border-2 border-dashed border-gray-300 p-12 text-center">
+        <p className="text-gray-500">Architecture block diagram</p>
+        <p className="mt-2 text-sm text-gray-400">
+          Application software and system component views coming soon
+        </p>
       </div>
-      <div>
-        <h2 className="mb-4 text-lg font-semibold">Workload Breakdown</h2>
-        {wlLoading && <p className="text-gray-500">Loading workload data...</p>}
-        {workload && workload.operators.length > 0 ? (
-          <DrillTree data={workload} />
-        ) : (
-          !wlLoading && <p className="text-gray-400">No workload data available.</p>
-        )}
-      </div>
+    </div>
+  )
+}
+
+function TaskGraphTab({ sessionId }: { sessionId: string }) {
+  const { data: taskGraph, isLoading } = useTaskGraph(sessionId)
+
+  if (isLoading) return <p className="text-gray-500">Loading task graph...</p>
+
+  return (
+    <div>
+      <h2 className="mb-4 text-lg font-semibold">Task Graph</h2>
+      {taskGraph && taskGraph.nodes.length > 0 ? (
+        <TaskGraph data={taskGraph} />
+      ) : (
+        <p className="text-gray-400">No task graph available.</p>
+      )}
     </div>
   )
 }
