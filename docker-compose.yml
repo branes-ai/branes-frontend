@@ -2,8 +2,12 @@ services:
   backend:
     image: python:3.12-slim
     working_dir: /app
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     command: >
-      bash -c "pip install -e '.[api]' --quiet &&
+      bash -c "apt-get update -qq && apt-get install -y -qq curl >/dev/null 2>&1;
+               pip install -e '.[api]' --quiet &&
                branes api serve --host 0.0.0.0 --port 8000"
     ports:
       - '8000:8000'
@@ -11,29 +15,26 @@ services:
       - ${BACKEND_REPO:-../embodied-ai-architect}:/app
       - ${SESSION_DIR:-~/.embodied-ai}:/root/.embodied-ai:ro
     healthcheck:
-      test:
-        [
-          'CMD',
-          'python',
-          '-c',
-          "import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health')",
-        ]
+      test: ['CMD', 'curl', '-f', 'http://localhost:8000/api/health']
       interval: 10s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 12
+      start_period: 60s
 
   frontend:
     build:
       context: .
       dockerfile: Dockerfile.dev
+    dns:
+      - 8.8.8.8
+      - 8.8.4.4
     ports:
       - '3000:3000'
     volumes:
       - .:/app
       - /app/node_modules
     environment:
-      VITE_API_URL: http://backend:8000
+      VITE_PROXY_TARGET: http://backend:8000
     depends_on:
       backend:
         condition: service_healthy
