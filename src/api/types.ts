@@ -28,6 +28,7 @@ export interface SoCDesignState {
   use_case?: string
   constraints?: Record<string, number>
   ppa_metrics?: Record<string, unknown>
+  design_rationale?: unknown[]
   [key: string]: unknown
 }
 
