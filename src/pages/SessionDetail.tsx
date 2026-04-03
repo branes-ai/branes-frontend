@@ -17,6 +17,7 @@ import TrajectoryChart from '../components/TrajectoryChart.tsx'
 import SwapRadar from '../components/SwapRadar.tsx'
 import DrillTree from '../components/DrillTree.tsx'
 import DecisionTimeline from '../components/DecisionTimeline.tsx'
+import CostWaterfall from '../components/CostWaterfall.tsx'
 import type { DecisionEntry } from '../components/DecisionTimeline.tsx'
 
 const TABS = ['Overview', 'Optimization', 'Architecture', 'SWaP-C', 'Decisions'] as const
@@ -104,12 +105,33 @@ export default function SessionDetail() {
         )}
         {activeTab === 'Architecture' && <ArchitectureTab sessionId={id!} />}
         {activeTab === 'SWaP-C' && (
-          <div>
-            <h2 className="mb-4 text-lg font-semibold">SWaP-C Radar</h2>
-            <SwapRadar
-              metrics={ppa as Record<string, number>}
-              constraints={constraints}
-            />
+          <div className="space-y-8">
+            <div>
+              <h2 className="mb-4 text-lg font-semibold">SWaP-C Radar</h2>
+              <SwapRadar
+                metrics={ppa as Record<string, number>}
+                constraints={constraints}
+              />
+            </div>
+            {(ppa.cost_breakdown as Record<string, number> | undefined) && (
+              <div>
+                <h2 className="mb-4 text-lg font-semibold">Cost Breakdown</h2>
+                <CostWaterfall
+                  breakdown={
+                    ppa.cost_breakdown as {
+                      die_cost: number
+                      package_cost: number
+                      test_cost: number
+                      nre_per_unit: number
+                      total: number
+                      production_volume?: number
+                      nre_total?: number
+                    }
+                  }
+                  budgetUsd={constraints.cost_usd}
+                />
+              </div>
+            )}
           </div>
         )}
         {activeTab === 'Decisions' && (
