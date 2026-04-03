@@ -69,7 +69,15 @@ export default function SessionList() {
 
   return (
     <div className="mx-auto max-w-6xl p-8">
-      <h1 className="mb-6 text-2xl font-bold">Design Sessions</h1>
+      <div className="mb-6 flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Design Sessions</h1>
+        <Link
+          to="/compare"
+          className="rounded bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700"
+        >
+          Compare Sessions
+        </Link>
+      </div>
 
       {error && (
         <p className="mb-4 text-red-600">Error loading sessions: {String(error)}</p>
